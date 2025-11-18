@@ -43,7 +43,8 @@ jobs:
           mv out.yaml docs/data/eessi_software_metadata.yaml
           # Generate Markdown index for data files
           echo "# Data Files" > docs/data/index.md
-          for f in docs/data/eessi*.yaml; do
+          cd docs/data
+          for f in eessi*.yaml; do
             echo "- [$f]($f)" >> docs/data/index.md
           done
       - run: |
