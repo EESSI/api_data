@@ -46,7 +46,9 @@ jobs:
           for f in docs/data/eessi*.yaml; do
             echo "- [$f]($f)" >> docs/data/index.md
           done
-      - run: zensical build --clean
+      - run: |
+          source /tmp/venv_docs/bin/activate
+          zensical build --clean
       - uses: actions/upload-pages-artifact@v4
         with:
           path: site
