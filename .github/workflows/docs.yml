@@ -1,0 +1,51 @@
+name: Generate and serve API data for EESSI
+on:
+  push:
+    branches:
+      - main
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+jobs:
+  deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/configure-pages@v5
+      - uses: actions/checkout@v5
+      - uses: eessi/github-action-eessi@v3
+        with:
+          use_eessi_module: true
+          eessi_stack_version: "2025.06"
+      - name: Create a virtualenv to install zensical
+        run: |
+          python -m venv /tmp/venv_docs
+          source /tmp/venv_docs/bin/activate
+          pip install zensical
+      - name: Generate API data
+        run: |
+          echo "Generating data files..."
+          module purge
+          module unuse $MODULEPATH
+          module use /cvmfs/software.eessi.io/init/modules/
+          module load EESSI/2025.06
+          module load EasyBuild/5
+          module load EESSI-extend
+          python generate_data_files.py --eessi-version=2023.06
+          python generate_data_files.py --eessi-version=2025.06
+          python merge_data_files.py out.yaml eessi*.yaml
+          mv out.yaml docs/data/eessi_software_metadata.yaml
+          # Generate Markdown index for data files
+          echo "# Data Files" > docs/data/index.md
+          for f in docs/data/eessi*.yaml; do
+            [ "$f" = "docs/data/index.md" ] && continue
+            echo "- [$f]($f)" >> docs/data/index.md
+          done
+      - run: zensical build --clean
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: site
+      - uses: actions/deploy-pages@v4
