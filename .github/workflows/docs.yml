@@ -45,7 +45,7 @@ jobs:
           echo "# Data Files" > docs/data/index.md
           cd docs/data
           for f in eessi*.yaml; do
-            echo "- [$f]($f)" >> docs/data/index.md
+            echo "- [$f]($f)" >> index.md
           done
       - run: |
           source /tmp/venv_docs/bin/activate
