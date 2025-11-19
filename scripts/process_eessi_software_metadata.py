@@ -4,7 +4,6 @@ import os
 import sys
 import yaml
 import json
-from easybuild.tools import LooseVersion
 
 ARCHITECTURES = [
     "aarch64/generic",
