@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 import sys
 import yaml
+import json
 
 def main():
     if len(sys.argv) < 3:
@@ -40,12 +41,12 @@ def main():
     #       - gpu_architectures (list, empty for now)
     #       - module_file
     #       - module_environment (list of modules)
-    # WIP
+    json_metadata = {"timestamp": software_metadata["timestamp"]}
 
     with open(output_file, "w") as out:
-        yaml.dump(merged, out)
+        json.dump(json_metadata, out)
 
-    print(f"Successfully merged into {output_file}")
+    print(f"Successfully processed {input_file} to {output_file}")
 
 
 if __name__ == "__main__":

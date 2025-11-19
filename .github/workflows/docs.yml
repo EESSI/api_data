@@ -41,11 +41,12 @@ jobs:
           wait
           python scripts/merge_data_files.py out.yaml eessi*.yaml
           mv out.yaml docs/data/eessi_software_metadata.yaml
-          # Generate Markdown index for data files
-          echo "# Data Files" > docs/data/index.md
+          # Generate json data files and markdown index/description for them
           cd docs/data
-          for f in eessi*.yaml; do
-            echo "- [$f]($f)" >> index.md
+          python ../../scripts/process_eessi_software_metadata.py eessi_software_metadata.yaml eessi_api_metadata.json
+          python ../../scripts/calculate_hashes.py
+          for json_file in *.json; do
+            python ../../scripts/generate_schema_md.py json_file >> index.md
           done
       - run: |
           source /tmp/venv_docs/bin/activate
