@@ -14,18 +14,32 @@ def main():
         software_metadata = yaml.load(f, Loader=yaml.FullLoader) or {}
     
     # Construct a new data object to export for use by an API endpoint
-    # software-name
-    #   - description (from most recent version)
-    #   - homepage (from most recent version)
-    #   - license (list, empty for now)
-    #   - image (url, empty for now)
-    #   - categories (list, empty for now)
-    #   - versions (list of dicts)
-    #     - version_suffix
-    #     - eessi_version
-    #     - architectures (list)
-    #     - module_file
-    #     - module_environment (list of modules)
+    # - timestamp
+    # - architectures (list)
+    # - gpu_architectures (list, empty for now)
+    # - categories (list, empty for now)
+    # - toolchain_families_compatibility (list, constructed to be EESSI version specific so has implicit inclusion of EESSI version)
+    # - software
+    #   - software-name (list, filter on category)
+    #     - description (from most recent version)
+    #     - homepage (from most recent version)
+    #     - license (list of dicts, empty for now, typically expect one entry)
+    #       - name
+    #       - identifier
+    #       - url
+    #       - description
+    #     - image (url, empty for now)
+    #     - categories (list, empty for now)
+    #     - versions (list of dicts, filter on architecture, filter on toolchain_families_compatibility)
+    #       - version
+    #       - toolchain
+    #       - toolchain_families_compatibility (list, constructed to be EESSI version specific so has implicit selection of EESSI version)
+    #       - version_suffix
+    #       - eessi_version
+    #       - architectures (list)
+    #       - gpu_architectures (list, empty for now)
+    #       - module_file
+    #       - module_environment (list of modules)
     # WIP
 
     with open(output_file, "w") as out:

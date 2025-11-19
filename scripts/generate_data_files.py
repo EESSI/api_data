@@ -8,6 +8,7 @@ import tempfile
 import subprocess
 import yaml
 from collections import defaultdict, OrderedDict
+from datetime import datetime, timezone
 from easybuild.tools.version import VERSION as EASYBUILD_VERSION
 from easybuild.framework.easyconfig.easyconfig import process_easyconfig, get_toolchain_hierarchy
 from easybuild.tools.options import set_up_configuration
@@ -199,6 +200,8 @@ if __name__ == "__main__":
 
     # Store all our data in a dict
     eessi_software = {eessi_version: {}}
+    # Add a timestamp
+    eessi_software["timestamp"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     
     # Store the toolchain hierarchies supported by the EESSI version
     eessi_software[eessi_version]["toolchain_hierarchy"] = {}
