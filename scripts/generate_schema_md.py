@@ -39,11 +39,11 @@ def main():
 
 - [{json_path.name}]({json_path.name})
 
-  !!! info "JSON Schema: {json_path.name}" collapse
+    ??? info "JSON Schema: {json_path.name}"
     
-      ```text
-{explain_json_schema(data, indent=6)}
-      ```
+        ```text
+{explain_json_schema(data, indent=8)}
+        ```
 """
 
     print(md_content)

@@ -46,7 +46,7 @@ jobs:
           python ../../scripts/process_eessi_software_metadata.py eessi_software_metadata.yaml eessi_api_metadata.json
           python ../../scripts/calculate_hashes.py
           for json_file in *.json; do
-            python ../../scripts/generate_schema_md.py json_file >> index.md
+            python ../../scripts/generate_schema_md.py $json_file >> index.md
           done
       - run: |
           source /tmp/venv_docs/bin/activate
