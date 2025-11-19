@@ -125,7 +125,8 @@ def get_all_software(eessi_files_by_eessi_version):
         files = [file for file in eessi_files_by_eessi_version[eessi_version].keys() if file.startswith('/cvmfs')]
         total = len(files)
 
-        for filename in files:
+        for i, filename in enumerate(files, start=1):
+            print(f"EESSI/{eessi_version}, {i} of {total}: {filename}")
             software_updates = get_software_information_by_filename(eessi_files_by_eessi_version[eessi_version][filename], original_path=filename, toolchain_families=eessi_files_by_eessi_version[eessi_version]['toolchain_hierarchy'])
             for software in software_updates.keys():
                 if software not in all_software_information.keys():
