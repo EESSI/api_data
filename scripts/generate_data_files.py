@@ -199,16 +199,17 @@ if __name__ == "__main__":
     tmpdir = tempfile.mkdtemp()
 
     # Store all our data in a dict
-    eessi_software = {eessi_version: {}}
+    eessi_software = {"eessi_version": {}}
+    eessi_software["eessi_version"][eessi_version] = {}
     # Add a timestamp
     eessi_software["timestamp"] = datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
     
     # Store the toolchain hierarchies supported by the EESSI version
-    eessi_software[eessi_version]["toolchain_hierarchy"] = {}
+    eessi_software["eessi_version"][eessi_version]["toolchain_hierarchy"] = {}
     for top_level_toolchain in EESSI_SUPPORTED_TOP_LEVEL_TOOLCHAINS[eessi_version]:
         toolchain_family = f"{top_level_toolchain['name']}_{top_level_toolchain['version']}"
         # Get the hierarchy and always add the system toolchain
-        eessi_software[eessi_version]["toolchain_hierarchy"][toolchain_family] = [{'name': 'system', 'version': 'system'}] + get_toolchain_hierarchy(top_level_toolchain)
+        eessi_software["eessi_version"][eessi_version]["toolchain_hierarchy"][toolchain_family] = [{'name': 'system', 'version': 'system'}] + get_toolchain_hierarchy(top_level_toolchain)
     
     for eb_version_of_install, files in sorted(result.items()):
         print(f"Major version {eb_version_of_install}:")
@@ -233,24 +234,24 @@ if __name__ == "__main__":
                 shutil.rmtree(easyblocks_dir)
                 
                 # Use the path as the key since we know it is unique
-                eessi_software[eessi_version][file] = parsed_ec['ec'].asdict()
-                eessi_software[eessi_version][file]['mtime'] = os.path.getmtime(file)
+                eessi_software["eessi_version"][eessi_version][file] = parsed_ec['ec'].asdict()
+                eessi_software["eessi_version"][eessi_version][file]['mtime'] = os.path.getmtime(file)
                 
                 # Make sure we can load the module before adding it's information to the main dict
                 try:
-                    eessi_software[eessi_version][file]['required_modules'] = load_and_list_modules(parsed_ec['full_mod_name'])
+                    eessi_software["eessi_version"][eessi_version][file]['required_modules'] = load_and_list_modules(parsed_ec['full_mod_name'])
                 except RuntimeError as e:
                     print(f"Ignoring {file} due to error processing module: {e}")
-                    eessi_software[eessi_version].pop(file)
+                    eessi_software["eessi_version"][eessi_version].pop(file)
                     continue
 
                 # Store everything we now know about the installation as a dict
                 # Add important data that is related to the module environment
-                eessi_software[eessi_version][file]['full_mod_name'] = parsed_ec['full_mod_name']
-                eessi_software[eessi_version][file]['short_mod_name'] = parsed_ec['short_mod_name']
-                eessi_software[eessi_version][file]['required_modules'] = load_and_list_modules(parsed_ec['full_mod_name'])
+                eessi_software["eessi_version"][eessi_version][file]['full_mod_name'] = parsed_ec['full_mod_name']
+                eessi_software["eessi_version"][eessi_version][file]['short_mod_name'] = parsed_ec['short_mod_name']
+                eessi_software["eessi_version"][eessi_version][file]['required_modules'] = load_and_list_modules(parsed_ec['full_mod_name'])
                 # Retain the easyblocks used so we can use a heuristic to figure out the type of extensions (R, Python, Perl)
-                eessi_software[eessi_version][file]['easyblocks'] = easyblocks_used
+                eessi_software["eessi_version"][eessi_version][file]['easyblocks'] = easyblocks_used
     
     # Store the result
     with open(f"eessi_software_{eessi_version}-eb{str(EASYBUILD_VERSION.version[0])}.yaml", "w") as f:
