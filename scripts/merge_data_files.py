@@ -60,7 +60,7 @@ def main():
             merged = strict_merge(merged, data)
 
     # Make sure timestamps are within one hour of each other then use the earliest
-    data["timestamp"] = earliest_if_within_two_hours(timestamps=timestamps)
+    merged["timestamp"] = earliest_if_within_two_hours(timestamps=timestamps)
 
     with open(output_file, "w") as out:
         yaml.dump(merged, out)
