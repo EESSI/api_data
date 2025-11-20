@@ -74,8 +74,8 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
             print(f"No module {substituted_modulefile}...not adding software for archtecture {arch}")
             continue
 
-    # TODO: Handle GPU arch later
-    base_version_dict['gpu_arch'] = []
+    # TODO: Handle GPU arch later, but it is going to need to be a dict as we will filter on cpu arch
+    base_version_dict['gpu_arch'] = {}
 
     # Now we can cycle throught the possibilities
     # - software application itself
@@ -100,7 +100,7 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
         version_dict['version'] = ext[1]
         version_dict['versionsuffix'] = ''
         # Add the parent software name so we can make a set for all versions
-        version_dict['parent_software'] = {'name': file_metadata['name'], 'version': file_metadata['version'], 'version': file_metadata['versionsuffix']}
+        version_dict['parent_software'] = {'name': file_metadata['name'], 'version': file_metadata['version'], 'versionsuffix': file_metadata['versionsuffix']}
         # First we do a heuristic to figure out the type of extension
         if 'pythonpackage.py' in file_metadata['easyblocks']:
             version_dict['description'] = f"""{ext[0]} is a Python package included in the software module for {version_dict['parent_software']['name']}"""
