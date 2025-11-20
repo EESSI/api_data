@@ -43,7 +43,7 @@ jobs:
           mv out.yaml docs/data/eessi_software_metadata.yaml
           # Generate json data files and markdown index/description for them
           cd docs/data
-          python ../../scripts/process_eessi_software_metadata.py eessi_software_metadata.yaml eessi_api_metadata.json
+          python ../../scripts/process_eessi_software_metadata.py eessi_software_metadata.yaml eessi_api_metadata
           python ../../scripts/calculate_hashes.py
           for json_file in *.json; do
             python ../../scripts/generate_schema_md.py $json_file >> index.md
