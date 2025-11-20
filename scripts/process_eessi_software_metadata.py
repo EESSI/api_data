@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import copy
+import re
 import os
 import sys
 import yaml
@@ -32,13 +33,13 @@ TOOLCHAIN_FAMILIES = [
 
 def get_software_information_by_filename(file_metadata, original_path=None, toolchain_families=None):
     # print(original_path)
-    software = {}
     # Due to components and extensions we may return a few different entries, construct a base dict first to build from
     base_version_dict = {
         'homepage': file_metadata['homepage'],
         'license': [],
         'image': '',
         'categories': [],
+        'identifier': '', 
         'toolchain': file_metadata['toolchain'],
         'toolchain_families_compatibility': [key for key in toolchain_families.keys() if file_metadata['toolchain'] in toolchain_families[key]],
         'modulename': file_metadata['short_mod_name'],
@@ -69,7 +70,8 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
         try:
             if os.path.basename(substituted_modulefile) in os.listdir(os.path.dirname(substituted_modulefile)):
                 base_version_dict['cpu_arch'].append(arch)
-        except (FileNotFoundError, PermissionError) as e:
+        except FileNotFoundError as e:
+            print(f"No module {substituted_modulefile}...not adding software for archtecture {arch}")
             continue
 
     # TODO: Handle GPU arch later
@@ -77,63 +79,104 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
 
     # Now we can cycle throught the possibilities
     # - software application itself
+    software = {}
     software[file_metadata['name']] = {'versions': []}
     version_dict = copy.deepcopy(base_version_dict)
     version_dict['description'] = file_metadata['description']  
     version_dict['version'] = file_metadata['version']
     version_dict['versionsuffix'] = file_metadata['versionsuffix']
-    version_dict['type'] = "application"
+    # No need for as we separate out the different types
+    # version_dict['type'] = "application"
     software[file_metadata['name']]['versions'].append(version_dict)
     # - Now extensions
+    python_extensions = {}
+    perl_extensions = {}
+    r_extensions = {}
+    octave_extensions = {}
+    ruby_extensions = {}
     for ext in file_metadata['exts_list']:
-        # extensions are tuples beginning with name and version
-        if ext[0] not in software.keys():
-            software[ext[0]] = {'versions': []}
         version_dict = copy.deepcopy(base_version_dict)
+        # (extensions are tuples beginning with name and version)
         version_dict['version'] = ext[1]
         version_dict['versionsuffix'] = ''
+        # Add the parent software name so we can make a set for all versions
+        version_dict['parent_software'] = {'name': file_metadata['name'], 'version': file_metadata['version'], 'version': file_metadata['versionsuffix']}
+        # First we do a heuristic to figure out the type of extension
         if 'pythonpackage.py' in file_metadata['easyblocks']:
-            version_dict['type'] = "Python package"
+            version_dict['description'] = f"""{ext[0]} is a Python package included in the software module for {version_dict['parent_software']['name']}"""
+            python_extensions[ext[0]] = {'versions': [], 'parent_software': set()}
+            python_extensions[ext[0]]['versions'].append(version_dict)
+            python_extensions[ext[0]]['parent_software'].add(version_dict['parent_software']['name'])
         elif 'rpackage.py' in file_metadata['easyblocks']:
-            version_dict['type'] = "R package"
+            version_dict['description'] = f"""{ext[0]} is an R package included in the software module for {version_dict['parent_software']['name']}"""
+            r_extensions[ext[0]] = {'versions': [], 'parent_software': set()}
+            r_extensions[ext[0]]['versions'].append(version_dict)
+            r_extensions[ext[0]]['parent_software'].add(version_dict['parent_software']['name'])
         elif 'perlmodule.py' in file_metadata['easyblocks']:
-            version_dict['type'] = "Perl module"
+            version_dict['description'] = f"""{ext[0]} is a Perl module package included in the software module for {version_dict['parent_software']['name']}"""
+            perl_extensions[ext[0]] = {'versions': [], 'parent_software': set()}
+            perl_extensions[ext[0]]['versions'].append(version_dict)
+            perl_extensions[ext[0]]['parent_software'].add(version_dict['parent_software']['name'])
+        elif 'octavepackage.py' in file_metadata['easyblocks']:
+            version_dict['description'] = f"""{ext[0]} is an Octave package included in the software module for {version_dict['parent_software']['name']}"""
+            octave_extensions[ext[0]] = {'versions': [], 'parent_software': set()}
+            octave_extensions[ext[0]]['versions'].append(version_dict)
+            octave_extensions[ext[0]]['parent_software'].add(version_dict['parent_software']['name'])
+        elif 'rubygem.py' in file_metadata['easyblocks']:
+            version_dict['description'] = f"""{ext[0]} is an Ruby gem included in the software module for {version_dict['parent_software']['name']}"""
+            ruby_extensions[ext[0]] = {'versions': [], 'parent_software': set()}
+            ruby_extensions[ext[0]]['versions'].append(version_dict)
+            ruby_extensions[ext[0]]['parent_software'].add(version_dict['parent_software']['name'])
         else:
-            version_dict['type'] = "extension"
-        version_dict['description'] = f"""{ext[0]} is a {version_dict["type"]} included in the module {version_dict["modulename"]}"""
-        software[ext[0]]['versions'].append(version_dict)
+            raise ValueError(f"Only known extension types are R, Python and Perl! Easyblocks used by {original_path} were {file_metadata['easyblocks']}")
     # - Finally components (may not exist in data)
+    components = {}
     if 'components' in file_metadata.keys():
         for component in file_metadata['components']:
             # extensions are tuples beginning with name and version
-            if component[0] not in software.keys():
-                software[component[0]] = {'versions': []}
+            if component[0] not in components.keys():
+                components[component[0]] = {'versions': [], 'parent_software': set()}
             version_dict = copy.deepcopy(base_version_dict)
             version_dict['version'] = component[1]
             version_dict['versionsuffix'] = ''
             version_dict['type'] = "Component"
-            version_dict['description'] = f"""{component[0]} is a {version_dict["type"]} included in the module {version_dict["modulename"]}"""
-            software[component[0]]['versions'].append(version_dict)
-    return software
+            version_dict['parent_software'] = {'name': file_metadata['name'], 'version': file_metadata['version'], 'version': file_metadata['versionsuffix']}
+            version_dict['description'] = f"""{component[0]} is a component included in the software module for {version_dict['parent_software']['name']}"""
+            components[component[0]]['versions'].append(version_dict)
+            components[component[0]]['parent_software'].add(version_dict['parent_software']['name'])
+    # print(f"Software: {software}, Python: {python_extensions}, Perl: {perl_extensions}, R: {r_extensions}, Component: {components}")
+    return software, {"python": python_extensions, "perl": perl_extensions, "r": r_extensions, "octave": octave_extensions, "ruby": ruby_extensions, "component": components}
 
 
 def get_all_software(eessi_files_by_eessi_version):
     # Let's brute force things, for every file gather all the information
     # and then once we have it decides who has best information
     all_software_information = {}
+    all_extension_information ={}
     for eessi_version in eessi_files_by_eessi_version.keys():
         files = [file for file in eessi_files_by_eessi_version[eessi_version].keys() if file.startswith('/cvmfs')]
         total = len(files)
 
         for i, filename in enumerate(files, start=1):
             print(f"EESSI/{eessi_version}, {i} of {total}: {filename}")
-            software_updates = get_software_information_by_filename(eessi_files_by_eessi_version[eessi_version][filename], original_path=filename, toolchain_families=eessi_files_by_eessi_version[eessi_version]['toolchain_hierarchy'])
+            software_updates, extensions_updates = get_software_information_by_filename(eessi_files_by_eessi_version[eessi_version][filename], original_path=filename, toolchain_families=eessi_files_by_eessi_version[eessi_version]['toolchain_hierarchy'])
+            # initialise all the extension dicts
+            for key in extensions_updates.keys():
+                if key not in all_extension_information.keys():
+                    all_extension_information[key] = {}
             for software in software_updates.keys():
                 if software not in all_software_information.keys():
                     all_software_information[software] = {'versions': []}
                 all_software_information[software]['versions'].extend(software_updates[software]['versions'])
+            for key in all_extension_information.keys():
+                for extension in extensions_updates[key].keys():
+                    if extension not in all_extension_information[key].keys():
+                        all_extension_information[key][extension] = {'versions': [], 'parent_software': set()}
+                    all_extension_information[key][extension]['versions'].extend(extensions_updates[key][extension]['versions'])
+                    all_extension_information[key][extension]['parent_software'].update(extensions_updates[key][extension]['parent_software'])
 
     # Now that we have all the information let's cherry pick common items from the latest version of packages
+    print(f"Total of {len(all_software_information.keys())} individual software packages")
     for software in all_software_information.keys():
         # Just look for the latest toolchain family, that should have latest versions
         reference_version = None
@@ -143,20 +186,47 @@ def get_all_software(eessi_files_by_eessi_version):
                     reference_version = version
         if reference_version is None:
             raise ValueError(f"No toolchain compatibility in {all_software_information[software]}")
-        for top_level_info in ['description', 'homepage', 'license', 'image', 'categories']:
+        for top_level_info in ['description', 'homepage', 'license', 'image', 'categories', 'identifier']:
             all_software_information[software][top_level_info] = reference_version[top_level_info]
-            # Now we can clean up all the duplication
-            for version in all_software_information[software]['versions']:
-                version.pop(top_level_info)
+        #     # Now we can clean up all the duplication, but it save little space to do so and it may prove useful
+        #     for version in all_software_information[software]['versions']:
+        #         version.pop(top_level_info)
+    
+    # Do the same for extensions and components type
+    module_text = {
+        "perl": "Perl module packages",
+        "python": "Python packages",
+        "r": "R packages",
+        "component": "software components",
+        "octave": "octave package"
+    }
+    for key in all_extension_information.keys():
+        print(f"Total of {len(all_extension_information[key].keys())} individual {key} packages")
+        for software in all_extension_information[key].keys():
+            # Just look for the latest toolchain family, that should have latest versions
+            reference_version = None
+            for toolchain_family in TOOLCHAIN_FAMILIES:
+                for version in all_extension_information[key][software]['versions']:
+                    if toolchain_family in version["toolchain_families_compatibility"]:
+                        reference_version = version
+            if reference_version is None:
+                raise ValueError(f"No toolchain compatibility in {all_extension_information[key][software]}")
+            # description is a bit special for extensions (we replace the last word by the set, and pop the set since we no longer need it and will later dump to json)
+            all_extension_information[key][software]['description'] = re.sub(r'\b[\w-]+\b(?=\s*$)', f"{all_extension_information[key][software].pop('parent_software')}", reference_version['description'])
+            for top_level_info in ['homepage', 'license', 'image', 'categories']:
+                all_extension_information[key][software][top_level_info] = reference_version[top_level_info]
+            #     # Now we can clean up all the duplication, but it save little space to do so and it may prove useful
+            #     for version in all_software_information[software]['versions']:
+            #         version.pop(top_level_info)
 
-    return all_software_information
+    return {'software': all_software_information, **all_extension_information}
 
 def main():
     if len(sys.argv) < 3:
-        print("Usage: process_eessi_software_metadata.py input.yaml output.json")
+        print("Usage: process_eessi_software_metadata.py input.yaml output_stub")
         sys.exit(1)
 
-    output_file = sys.argv[2]
+    output_stub = sys.argv[2]
     input_file = sys.argv[1]
 
     with open(input_file) as f:
@@ -188,21 +258,23 @@ def main():
     #       - gpu_arch (list, empty for now)
     #       - module_file
     #       - required_modules (list of modules)
-    json_metadata = {"timestamp": software_metadata["timestamp"]}
+    base_json_metadata = {"timestamp": software_metadata["timestamp"]}
     eessi_versions = software_metadata["eessi_version"].keys()
-    json_metadata["architectures_map"] = {}
+    base_json_metadata["architectures_map"] = {}
     for eessi_version in eessi_versions:
-        json_metadata["architectures_map"][eessi_version] = {}
+        base_json_metadata["architectures_map"][eessi_version] = {}
         for architecture in ARCHITECTURES:
-            json_metadata["architectures_map"][eessi_version][architecture] = architecture
-    json_metadata["gpu_architectures_map"] = {}
-    json_metadata["category_details"] = {}
-    json_metadata["software"] = get_all_software(software_metadata["eessi_version"])
-    
-    with open(output_file, "w") as out:
-        json.dump(json_metadata, out)
+            base_json_metadata["architectures_map"][eessi_version][architecture] = architecture
+    base_json_metadata["gpu_architectures_map"] = {}
+    base_json_metadata["category_details"] = {}
+    full_software_information = get_all_software(software_metadata["eessi_version"])
+    for key in full_software_information.keys():
+        json_metadata = copy.deepcopy(base_json_metadata)
+        json_metadata['software'] = full_software_information[key]
+        with open(f"{output_stub}_{key}.json", "w") as out:
+            json.dump(json_metadata, out)
 
-    print(f"Successfully processed {input_file} to {output_file}")
+    print(f"Successfully processed {input_file} to {output_stub}*.json")
 
 
 if __name__ == "__main__":
