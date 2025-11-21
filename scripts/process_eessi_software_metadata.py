@@ -319,7 +319,7 @@ def main():
     for key in full_software_information.keys():
         json_metadata = copy.deepcopy(base_json_metadata)
         json_metadata["software"] = full_software_information[key]
-        if "key" == "software":
+        if key == "software":
             file_suffix = key
         else:
             # everything else is some kind of extension
