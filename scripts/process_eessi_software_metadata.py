@@ -177,6 +177,7 @@ def get_all_software(eessi_files_by_eessi_version):
 
     # Now that we have all the information let's cherry pick common items from the latest version of packages
     print(f"Total of {len(all_software_information.keys())} individual software packages")
+    top_level_info_list = ['homepage', 'license', 'image', 'categories', 'identifier']
     for software in all_software_information.keys():
         # Just look for the latest toolchain family, that should have latest versions
         reference_version = None
@@ -186,7 +187,7 @@ def get_all_software(eessi_files_by_eessi_version):
                     reference_version = version
         if reference_version is None:
             raise ValueError(f"No toolchain compatibility in {all_software_information[software]}")
-        for top_level_info in ['description', 'homepage', 'license', 'image', 'categories', 'identifier']:
+        for top_level_info in top_level_info_listi + ['description']:
             all_software_information[software][top_level_info] = reference_version[top_level_info]
         #     # Now we can clean up all the duplication, but it save little space to do so and it may prove useful
         #     for version in all_software_information[software]['versions']:
@@ -213,7 +214,7 @@ def get_all_software(eessi_files_by_eessi_version):
                 raise ValueError(f"No toolchain compatibility in {all_extension_information[key][software]}")
             # description is a bit special for extensions (we replace the last word by the set, and pop the set since we no longer need it and will later dump to json)
             all_extension_information[key][software]['description'] = re.sub(r'\b[\w-]+\b(?=\s*$)', f"{all_extension_information[key][software].pop('parent_software')}", reference_version['description'])
-            for top_level_info in ['homepage', 'license', 'image', 'categories']:
+            for top_level_info in top_level_info_list:
                 all_extension_information[key][software][top_level_info] = reference_version[top_level_info]
             #     # Now we can clean up all the duplication, but it save little space to do so and it may prove useful
             #     for version in all_software_information[software]['versions']:
