@@ -5,6 +5,7 @@ import os
 import sys
 import yaml
 import json
+import subprocess
 
 ARCHITECTURES = [
     "aarch64/generic",
@@ -63,17 +64,18 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
 
     # 2) Construct the modulefile path
     before_arch, _, _ = original_path.partition(detected_arch)
-    modulefile = before_arch + detected_arch + "/modules/all/" + file_metadata["short_mod_name"]
+    modulefile = before_arch + detected_arch + "/modules/all/" + file_metadata["short_mod_name"] + '.lua'
+    spider_cache = before_arch + detected_arch + "/.lmod/cache/spiderT.lua"
 
-    # 3) Substitute each architecture and test module file existence
-    modulefile = original_path.replace(detected_arch, arch)
+    # 3) Substitute each architecture and test module file existence in spider cache
     for arch in ARCHITECTURES:
         substituted_modulefile = modulefile.replace(detected_arch, arch)
-        # os.path.exists is very expensive for CVMFS
-        try:
-            if os.path.basename(substituted_modulefile) in os.listdir(os.path.dirname(substituted_modulefile)):
-                base_version_dict["cpu_arch"].append(arch)
-        except FileNotFoundError as e:
+        substituted_spider_cache = spider_cache.replace(detected_arch, arch)
+        # os.path.exists is very expensive for CVMFS so we just look for the file in the spider cache
+        found = subprocess.run(["grep", "-q", substituted_modulefile, substituted_spider_cache]).returncode == 0
+        if found:
+            base_version_dict["cpu_arch"].append(arch)
+        else:
             print(f"No module {substituted_modulefile}...not adding software for archtecture {arch}")
             continue
 
