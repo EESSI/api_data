@@ -187,7 +187,7 @@ def get_all_software(eessi_files_by_eessi_version):
                     reference_version = version
         if reference_version is None:
             raise ValueError(f"No toolchain compatibility in {all_software_information[software]}")
-        for top_level_info in top_level_info_listi + ['description']:
+        for top_level_info in top_level_info_list + ['description']:
             all_software_information[software][top_level_info] = reference_version[top_level_info]
         #     # Now we can clean up all the duplication, but it save little space to do so and it may prove useful
         #     for version in all_software_information[software]['versions']:
