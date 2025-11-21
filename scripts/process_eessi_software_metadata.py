@@ -317,7 +317,12 @@ def main():
     for key in full_software_information.keys():
         json_metadata = copy.deepcopy(base_json_metadata)
         json_metadata["software"] = full_software_information[key]
-        with open(f"{output_stub}_{key}.json", "w") as out:
+        if "key" == "software":
+            file_suffix = key
+        else:
+            # everything else is some kind of extension
+            file_suffix = "ext-" + key
+        with open(f"{output_stub}_{file_suffix}.json", "w") as out:
             json.dump(json_metadata, out)
 
     print(f"Successfully processed {input_file} to {output_stub}*.json")
