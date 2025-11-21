@@ -2,6 +2,7 @@ import json
 import sys
 from pathlib import Path
 
+
 def explain_json_schema(obj, indent=0):
     spacing = "  " * indent
     explanation = ""
@@ -21,6 +22,7 @@ def explain_json_schema(obj, indent=0):
     else:
         explanation += type(obj).__name__
     return explanation
+
 
 def main():
     if len(sys.argv) < 2:
@@ -47,6 +49,7 @@ def main():
 """
 
     print(md_content)
+
 
 if __name__ == "__main__":
     main()

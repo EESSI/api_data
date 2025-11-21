@@ -3,15 +3,13 @@ import sys
 import yaml
 from datetime import datetime, timezone
 
+
 def earliest_if_within_two_hours(timestamps):
     if not timestamps:
         raise ValueError("No timestamps provided")
 
     # Parse timestamps into aware datetime objects
-    times = [
-        datetime.fromisoformat(t.replace("Z", "+00:00"))
-        for t in timestamps
-    ]
+    times = [datetime.fromisoformat(t.replace("Z", "+00:00")) for t in timestamps]
 
     times.sort()
     earliest = times[0]
@@ -24,6 +22,7 @@ def earliest_if_within_two_hours(timestamps):
 
     # Return earliest *string*, matching input format
     return earliest.isoformat().replace("+00:00", "Z")
+
 
 def strict_merge(a, b, path=""):
     """Recursively merge dictionary b into a, erroring on mismatched values."""
