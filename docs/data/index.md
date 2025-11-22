@@ -16,5 +16,4 @@ data generation scripts. The file is generated automatically in CI.
 
 ## Processed JSON data
 
-Information about JSON data files is generated automatically in CI and added here.
-
+The YAML data is processed to a set of JSON data files, which generated automatically in CI and added below.
