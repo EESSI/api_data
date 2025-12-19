@@ -23,6 +23,7 @@ EESSI_REFERENCE_ARCHITECTURE = "x86_64/intel/icelake"
 EESSI_SUPPORTED_TOP_LEVEL_TOOLCHAINS = OrderedDict(
     {
         "2025.06": [
+            {"name": "foss", "version": "2025b"},
             {"name": "foss", "version": "2025a"},
             {"name": "foss", "version": "2024a"},
         ],
