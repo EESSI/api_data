@@ -25,6 +25,7 @@ ARCHITECTURES = [
 ]
 
 TOOLCHAIN_FAMILIES = [
+    "foss_2025b",
     "foss_2025a",
     "foss_2024a",
     "foss_2023b",
