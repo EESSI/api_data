@@ -25,12 +25,12 @@ ARCHITECTURES = [
 ]
 
 TOOLCHAIN_FAMILIES = [
-    "foss_2025b",
-    "foss_2025a",
-    "foss_2024a",
-    "foss_2023b",
-    "foss_2023a",
-    "foss_2022b",
+    "2025b_foss",
+    "2025a_foss",
+    "2024a_foss",
+    "2023b_foss",
+    "2023a_foss",
+    "2022b_foss",
 ]
 
 
@@ -47,7 +47,7 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
         "toolchain_families_compatibility": [
             key for key in toolchain_families.keys() if file_metadata["toolchain"] in toolchain_families[key]
         ],
-        "modulename": file_metadata["short_mod_name"],
+        "module": file_metadata["module"],
         "required_modules": file_metadata["required_modules"],
     }
 
@@ -65,7 +65,7 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
 
     # 2) Construct the modulefile path
     before_arch, _, _ = original_path.partition(detected_arch)
-    modulefile = before_arch + detected_arch + "/modules/all/" + file_metadata["short_mod_name"] + '.lua'
+    modulefile = before_arch + detected_arch + "/modules/all/" + file_metadata["module"]["full_module_name"] + '.lua'
     spider_cache = before_arch + detected_arch + "/.lmod/cache/spiderT.lua"
 
     # 3) Substitute each architecture and test module file existence in spider cache
@@ -161,11 +161,11 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
             version_dict = copy.deepcopy(base_version_dict)
             version_dict["version"] = component[1]
             version_dict["versionsuffix"] = ""
-            version_dict["type"] = "Component"
+            # version_dict["type"] = "Component"
             version_dict["parent_software"] = {
                 "name": file_metadata["name"],
                 "version": file_metadata["version"],
-                "version": file_metadata["versionsuffix"],
+                "versionsuffix": file_metadata["versionsuffix"],
             }
             version_dict["description"] = (
                 f"""{component[0]} is a component included in the software module for {version_dict['parent_software']['name']}"""
@@ -228,6 +228,7 @@ def get_all_software(eessi_files_by_eessi_version):
             for version in all_software_information[software]["versions"]:
                 if toolchain_family in version["toolchain_families_compatibility"]:
                     reference_version = version
+                    break
         if reference_version is None:
             raise ValueError(f"No toolchain compatibility in {all_software_information[software]}")
         for top_level_info in top_level_info_list + ["description"]:
@@ -305,7 +306,10 @@ def main():
     #       - versionsuffix
     #       - cpu_arch (list)
     #       - gpu_arch (list, empty for now)
-    #       - module_file
+    #       - module
+    #         - module_name
+    #         - module_version
+    #         - full_module_name
     #       - required_modules (list of modules)
     base_json_metadata = {"timestamp": software_metadata["timestamp"]}
     eessi_versions = software_metadata["eessi_version"].keys()

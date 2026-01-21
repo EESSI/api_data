@@ -48,10 +48,11 @@ def suppress_stdout():
 
 def module_dict_from_module_string(module):
     module_name, module_version = module.split("/", 1)
+    module_dict = {"module_name": module_name, "module_version": module_version, "full_module_name": module}
 
-    return {"module_name": module_name, "module_version": module_version}
+    return module_dict
 
-def load_and_list_modules(module_name):
+def load_and_list_modules(full_module_name):
     """
     Run `module load <name>` and `module list` inside a subshell.
     Returns the list of loaded modules visible inside that subshell.
@@ -60,14 +61,14 @@ def load_and_list_modules(module_name):
 
     # Run as one shell script so the same session is used
     cmd = f"""
-        module load {module_name} || exit 1
+        module load {full_module_name} || exit 1
         module --terse list 2>&1
     """
 
     result = subprocess.run(["bash", "-c", cmd], stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True)
 
     if result.returncode != 0:
-        raise RuntimeError(f"Failed to load module '{module_name}':\n{result.stdout}")
+        raise RuntimeError(f"Failed to load module '{full_module_name}':\n{result.stdout}")
 
     # Parse module list output
     modules = [
@@ -79,18 +80,18 @@ def load_and_list_modules(module_name):
     # Filter out the modules we expect to be loaded
     eessi_extend_module_name = "EESSI-extend"
     eb_module_name = "EasyBuild"
-    if module_name.startswith(f"{eessi_extend_module_name}/"):
+    if full_module_name.startswith(f"{eessi_extend_module_name}/"):
         # Don't filter anything
         pass
-    elif module_name.startswith(f"{eb_module_name}/"):
+    elif full_module_name.startswith(f"{eb_module_name}/"):
         # Filter EESSI-extend
-        modules = [module for module in modules if module["name"] != eessi_extend_module_name]
+        modules = [module for module in modules if module["module_name"] != eessi_extend_module_name]
     else:
         # Filter EESSI-extend and EasyBuild
         modules = [
             module
             for module in modules
-            if module["name"] != eessi_extend_module_name and module["name"] != eb_module_name
+            if module["module_name"] != eessi_extend_module_name and module["module_name"] != eb_module_name
         ]
 
     return modules
@@ -217,7 +218,9 @@ if __name__ == "__main__":
     # Store the toolchain hierarchies supported by the EESSI version
     eessi_software["eessi_version"][eessi_version]["toolchain_hierarchy"] = {}
     for top_level_toolchain in EESSI_SUPPORTED_TOP_LEVEL_TOOLCHAINS[eessi_version]:
-        toolchain_family = f"{top_level_toolchain['name']}_{top_level_toolchain['version']}"
+        # versions are typically 2024a/2024b etc. for top level toolchains
+        # so let's use that to make sorting easy
+        toolchain_family = f"{top_level_toolchain['version']}_{top_level_toolchain['name']}"
         # Get the hierarchy and always add the system toolchain
         eessi_software["eessi_version"][eessi_version]["toolchain_hierarchy"][toolchain_family] = [
             {"name": "system", "version": "system"}
@@ -249,6 +252,7 @@ if __name__ == "__main__":
                 ]
                 shutil.rmtree(easyblocks_dir)
 
+                # Store everything we now know about the installation as a dict
                 # Use the path as the key since we know it is unique
                 eessi_software["eessi_version"][eessi_version][file] = parsed_ec["ec"].asdict()
                 eessi_software["eessi_version"][eessi_version][file]["mtime"] = os.path.getmtime(file)
@@ -263,11 +267,8 @@ if __name__ == "__main__":
                     eessi_software["eessi_version"][eessi_version].pop(file)
                     continue
 
-                # Store everything we now know about the installation as a dict
                 # Add important data that is related to the module environment
                 eessi_software["eessi_version"][eessi_version][file]["module"] = module_dict_from_module_string(parsed_ec["full_mod_name"])
-                eessi_software["eessi_version"][eessi_version][file]["full_mod_name"] = parsed_ec["full_mod_name"]
-                eessi_software["eessi_version"][eessi_version][file]["short_mod_name"] = parsed_ec["short_mod_name"]
                 # Retain the easyblocks used so we can use a heuristic to figure out the type of extensions (R, Python, Perl)
                 eessi_software["eessi_version"][eessi_version][file]["easyblocks"] = easyblocks_used
 
