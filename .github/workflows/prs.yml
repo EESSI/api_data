@@ -9,7 +9,7 @@ concurrency:
 permissions:
   contents: read
 jobs:
-  test:
+  test_data_generation:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
@@ -41,6 +41,12 @@ jobs:
           for json_file in *.json; do
             python ../../scripts/generate_schema_md.py $json_file >> index.md
           done
-      - run: |
+      - name: Test building the website
+        run: |
           source /tmp/venv_docs/bin/activate
           zensical build --clean
+      - name: Upload EESSI API metadata
+        uses: actions/upload-artifact@v4
+        with:
+          name: eessi-api-metadata
+          path: docs/data/eessi_api_metadata_software.json
