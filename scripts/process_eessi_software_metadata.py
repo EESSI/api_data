@@ -25,12 +25,12 @@ ARCHITECTURES = [
 ]
 
 TOOLCHAIN_FAMILIES = [
-    "foss_2025b",
-    "foss_2025a",
-    "foss_2024a",
-    "foss_2023b",
-    "foss_2023a",
-    "foss_2022b",
+    "2025b_foss",
+    "2025a_foss",
+    "2024a_foss",
+    "2023b_foss",
+    "2023a_foss",
+    "2022b_foss",
 ]
 
 
@@ -47,7 +47,7 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
         "toolchain_families_compatibility": [
             key for key in toolchain_families.keys() if file_metadata["toolchain"] in toolchain_families[key]
         ],
-        "modulename": file_metadata["short_mod_name"],
+        "module": file_metadata["module"],
         "required_modules": file_metadata["required_modules"],
     }
 
@@ -65,7 +65,7 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
 
     # 2) Construct the modulefile path
     before_arch, _, _ = original_path.partition(detected_arch)
-    modulefile = before_arch + detected_arch + "/modules/all/" + file_metadata["short_mod_name"] + '.lua'
+    modulefile = before_arch + detected_arch + "/modules/all/" + file_metadata["module"]["full_module_name"] + ".lua"
     spider_cache = before_arch + detected_arch + "/.lmod/cache/spiderT.lua"
 
     # 3) Substitute each architecture and test module file existence in spider cache
@@ -93,60 +93,77 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
     version_dict["versionsuffix"] = file_metadata["versionsuffix"]
     # No need for as we separate out the different types
     # version_dict['type'] = "application"
-    software[file_metadata["name"]]["versions"].append(version_dict)
-    # - Now extensions
+    # - Now extensions, we keep them both separately for each type and
+    #   as dicts with extension types in the specific installation
+    version_dict["extensions"] = []
     python_extensions = {}
     perl_extensions = {}
     r_extensions = {}
     octave_extensions = {}
     ruby_extensions = {}
     for ext in file_metadata["exts_list"]:
-        version_dict = copy.deepcopy(base_version_dict)
+        ext_version_dict = copy.deepcopy(base_version_dict)
         # (extensions are tuples beginning with name and version)
-        version_dict["version"] = ext[1]
-        version_dict["versionsuffix"] = ""
+        ext_version_dict["version"] = ext[1]
+        ext_version_dict["versionsuffix"] = ""
         # Add the parent software name so we can make a set for all versions
-        version_dict["parent_software"] = {
+        ext_version_dict["parent_software"] = {
             "name": file_metadata["name"],
             "version": file_metadata["version"],
             "versionsuffix": file_metadata["versionsuffix"],
         }
         # First we do a heuristic to figure out the type of extension
         if "pythonpackage.py" in file_metadata["easyblocks"]:
-            version_dict["description"] = (
-                f"""{ext[0]} is a Python package included in the software module for {version_dict['parent_software']['name']}"""
+            # First add it to our list of extensions for the parent software
+            version_dict["extensions"].append({"type": "python", "name": ext[0], "version": ext[1]})
+
+            # Now create the custom entry
+            ext_version_dict["description"] = (
+                f"""{ext[0]} is a Python package included in the software module for {ext_version_dict['parent_software']['name']}"""
             )
             python_extensions[ext[0]] = {"versions": [], "parent_software": set()}
-            python_extensions[ext[0]]["versions"].append(version_dict)
-            python_extensions[ext[0]]["parent_software"].add(version_dict["parent_software"]["name"])
+            python_extensions[ext[0]]["versions"].append(ext_version_dict)
+            python_extensions[ext[0]]["parent_software"].add(ext_version_dict["parent_software"]["name"])
         elif "rpackage.py" in file_metadata["easyblocks"]:
-            version_dict["description"] = (
-                f"""{ext[0]} is an R package included in the software module for {version_dict['parent_software']['name']}"""
+            # First add it to our list of extensions for the parent software
+            version_dict["extensions"].append({"type": "r", "name": ext[0], "version": ext[1]})
+
+            ext_version_dict["description"] = (
+                f"""{ext[0]} is an R package included in the software module for {ext_version_dict['parent_software']['name']}"""
             )
             r_extensions[ext[0]] = {"versions": [], "parent_software": set()}
-            r_extensions[ext[0]]["versions"].append(version_dict)
-            r_extensions[ext[0]]["parent_software"].add(version_dict["parent_software"]["name"])
+            r_extensions[ext[0]]["versions"].append(ext_version_dict)
+            r_extensions[ext[0]]["parent_software"].add(ext_version_dict["parent_software"]["name"])
         elif "perlmodule.py" in file_metadata["easyblocks"]:
-            version_dict["description"] = (
-                f"""{ext[0]} is a Perl module package included in the software module for {version_dict['parent_software']['name']}"""
+            # First add it to our list of extensions for the parent software
+            version_dict["extensions"].append({"type": "perl", "name": ext[0], "version": ext[1]})
+
+            ext_version_dict["description"] = (
+                f"""{ext[0]} is a Perl module package included in the software module for {ext_version_dict['parent_software']['name']}"""
             )
             perl_extensions[ext[0]] = {"versions": [], "parent_software": set()}
-            perl_extensions[ext[0]]["versions"].append(version_dict)
-            perl_extensions[ext[0]]["parent_software"].add(version_dict["parent_software"]["name"])
+            perl_extensions[ext[0]]["versions"].append(ext_version_dict)
+            perl_extensions[ext[0]]["parent_software"].add(ext_version_dict["parent_software"]["name"])
         elif "octavepackage.py" in file_metadata["easyblocks"]:
-            version_dict["description"] = (
-                f"""{ext[0]} is an Octave package included in the software module for {version_dict['parent_software']['name']}"""
+            # First add it to our list of extensions for the parent software
+            version_dict["extensions"].append({"type": "octave", "name": ext[0], "version": ext[1]})
+
+            ext_version_dict["description"] = (
+                f"""{ext[0]} is an Octave package included in the software module for {ext_version_dict['parent_software']['name']}"""
             )
             octave_extensions[ext[0]] = {"versions": [], "parent_software": set()}
-            octave_extensions[ext[0]]["versions"].append(version_dict)
-            octave_extensions[ext[0]]["parent_software"].add(version_dict["parent_software"]["name"])
+            octave_extensions[ext[0]]["versions"].append(ext_version_dict)
+            octave_extensions[ext[0]]["parent_software"].add(ext_version_dict["parent_software"]["name"])
         elif "rubygem.py" in file_metadata["easyblocks"]:
-            version_dict["description"] = (
-                f"""{ext[0]} is an Ruby gem included in the software module for {version_dict['parent_software']['name']}"""
+            # First add it to our list of extensions for the parent software
+            version_dict["extensions"].append({"type": "ruby", "name": ext[0], "version": ext[1]})
+
+            ext_version_dict["description"] = (
+                f"""{ext[0]} is an Ruby gem included in the software module for {ext_version_dict['parent_software']['name']}"""
             )
             ruby_extensions[ext[0]] = {"versions": [], "parent_software": set()}
-            ruby_extensions[ext[0]]["versions"].append(version_dict)
-            ruby_extensions[ext[0]]["parent_software"].add(version_dict["parent_software"]["name"])
+            ruby_extensions[ext[0]]["versions"].append(ext_version_dict)
+            ruby_extensions[ext[0]]["parent_software"].add(ext_version_dict["parent_software"]["name"])
         else:
             raise ValueError(
                 f"Only known extension types are R, Python and Perl! Easyblocks used by {original_path} were {file_metadata['easyblocks']}"
@@ -155,24 +172,30 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
     components = {}
     if "components" in file_metadata.keys():
         for component in file_metadata["components"]:
+            # First add it to our list of extensions for the parent software
+            version_dict["extensions"].append({"type": "component", "name": component[0], "version": component[1]})
+
             # extensions are tuples beginning with name and version
             if component[0] not in components.keys():
                 components[component[0]] = {"versions": [], "parent_software": set()}
-            version_dict = copy.deepcopy(base_version_dict)
-            version_dict["version"] = component[1]
-            version_dict["versionsuffix"] = ""
-            version_dict["type"] = "Component"
-            version_dict["parent_software"] = {
+            ext_version_dict = copy.deepcopy(base_version_dict)
+            ext_version_dict["version"] = component[1]
+            ext_version_dict["versionsuffix"] = ""
+            # version_dict["type"] = "Component"
+            ext_version_dict["parent_software"] = {
                 "name": file_metadata["name"],
                 "version": file_metadata["version"],
-                "version": file_metadata["versionsuffix"],
+                "versionsuffix": file_metadata["versionsuffix"],
             }
-            version_dict["description"] = (
-                f"""{component[0]} is a component included in the software module for {version_dict['parent_software']['name']}"""
+            ext_version_dict["description"] = (
+                f"""{component[0]} is a component included in the software module for {ext_version_dict['parent_software']['name']}"""
             )
-            components[component[0]]["versions"].append(version_dict)
-            components[component[0]]["parent_software"].add(version_dict["parent_software"]["name"])
-    # print(f"Software: {software}, Python: {python_extensions}, Perl: {perl_extensions}, R: {r_extensions}, Component: {components}")
+            components[component[0]]["versions"].append(ext_version_dict)
+            components[component[0]]["parent_software"].add(ext_version_dict["parent_software"]["name"])
+
+    # Now that we've processed all the information let's add the entry
+    software[file_metadata["name"]]["versions"].append(version_dict)
+
     return software, {
         "python": python_extensions,
         "perl": perl_extensions,
@@ -228,6 +251,7 @@ def get_all_software(eessi_files_by_eessi_version):
             for version in all_software_information[software]["versions"]:
                 if toolchain_family in version["toolchain_families_compatibility"]:
                     reference_version = version
+                    break
         if reference_version is None:
             raise ValueError(f"No toolchain compatibility in {all_software_information[software]}")
         for top_level_info in top_level_info_list + ["description"]:
@@ -305,7 +329,10 @@ def main():
     #       - versionsuffix
     #       - cpu_arch (list)
     #       - gpu_arch (list, empty for now)
-    #       - module_file
+    #       - module
+    #         - module_name
+    #         - module_version
+    #         - full_module_name
     #       - required_modules (list of modules)
     base_json_metadata = {"timestamp": software_metadata["timestamp"]}
     eessi_versions = software_metadata["eessi_version"].keys()
