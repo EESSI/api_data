@@ -103,7 +103,8 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
                     accel_substituted_modulefile = substituted_modulefile.replace(detected_accel_arch, accel_arch)
                     found = subprocess.run(["grep", "-q", accel_substituted_modulefile, substituted_spider_cache]).returncode == 0
                     if found:
-                        base_version_dict["gpu_arch"][arch].append(accel_arch)
+                        # Let's not include the "accel/" part of the accel_arch 
+                        base_version_dict["gpu_arch"][arch].append(accel_arch.replace("accel/", "", 1))
                     else:
                         print(f"No module {accel_substituted_modulefile}...not adding software for architecture {arch}/{accel_arch}")
                         continue
