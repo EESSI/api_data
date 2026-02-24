@@ -24,6 +24,14 @@ ARCHITECTURES = [
     "x86_64/intel/cascadelake",
 ]
 
+NVIDIA_ARCHITECTURES = [
+    "accel/nvidia/cc70",
+    "accel/nvidia/cc80",
+    "accel/nvidia/cc90",
+    "accel/nvidia/cc100",
+    "accel/nvidia/cc120",
+]
+
 TOOLCHAIN_FAMILIES = [
     "2025b_foss",
     "2025a_foss",
@@ -59,13 +67,25 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
         if f"/{arch}/" in original_path:
             detected_arch = arch
             break
-
     if detected_arch is None:
         raise RuntimeError("No known architecture matched in the input path.")
 
+    # also detect the GPU arch (this one may not exist)
+    # needs to be a dict as we can filter on associated cpu arch
+    base_version_dict["gpu_arch"] = {}
+    detected_accel_arch = None
+    for accel_arch in NVIDIA_ARCHITECTURES:
+        if f"/{accel_arch}/" in original_path:
+            detected_accel_arch = accel_arch
+            break
+    if detected_accel_arch is None:
+        # Not having a GPU is not an error (we can just leave it empty, which is falsey)
+        detected_accel_arch = ""
+
     # 2) Construct the modulefile path
     before_arch, _, _ = original_path.partition(detected_arch)
-    modulefile = before_arch + detected_arch + "/modules/all/" + file_metadata["module"]["full_module_name"] + ".lua"
+    # Remember, detected_accel_arch can be an empty string
+    modulefile = os.path.join(before_arch, detected_arch, detected_accel_arch, "modules/all", file_metadata["module"]["full_module_name"] + ".lua")
     spider_cache = before_arch + detected_arch + "/.lmod/cache/spiderT.lua"
 
     # 3) Substitute each architecture and test module file existence in spider cache
@@ -76,12 +96,20 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
         found = subprocess.run(["grep", "-q", substituted_modulefile, substituted_spider_cache]).returncode == 0
         if found:
             base_version_dict["cpu_arch"].append(arch)
+            # If we have an accelerator module let's check which architectures are supported
+            if detected_accel_arch:
+                base_version_dict["gpu_arch"][arch] = []
+                for accel_arch in NVIDIA_ARCHITECTURES:
+                    accel_substituted_modulefile = substituted_modulefile.replace(detected_accel_arch, accel_arch)
+                    found = subprocess.run(["grep", "-q", accel_substituted_modulefile, substituted_spider_cache]).returncode == 0
+                    if found:
+                        base_version_dict["gpu_arch"][arch].append(accel_arch)
+                    else:
+                        print(f"No module {accel_substituted_modulefile}...not adding software for architecture {arch}/{accel_arch}")
+                        continue
         else:
-            print(f"No module {substituted_modulefile}...not adding software for archtecture {arch}")
+            print(f"No module {substituted_modulefile}...not adding software for architecture {arch}")
             continue
-
-    # TODO: Handle GPU arch later, but it is going to need to be a dict as we will filter on cpu arch
-    base_version_dict["gpu_arch"] = {}
 
     # Now we can cycle throught the possibilities
     # - software application itself
