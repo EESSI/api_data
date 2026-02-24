@@ -31,7 +31,7 @@ jobs:
           # Set CPU override for the stack to query
           export EESSI_ARCHDETECT_OPTIONS_OVERRIDE="x86_64/intel/icelake"
           # Set GPU overrides for the stack to query (we have no GPU, so also override the GPU check)
-          export EESSI_ACCELERATOR_TARGET_OVERRIDE="accel/nvidia/cc80"
+          export EESSI_ACCELERATOR_TARGET_OVERRIDE="accel/nvidia/cc90"
           export EESSI_OVERRIDE_GPU_CHECK=1
           # Only do 2023.06 for EB 5 since this is just a test
           ( module load EESSI/2023.06 && module load EasyBuild/5 && module load EESSI-extend && python scripts/generate_data_files.py --eessi-version=2023.06 ) &
