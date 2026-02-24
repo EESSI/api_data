@@ -10,14 +10,15 @@ import yaml
 from collections import defaultdict, OrderedDict
 from datetime import datetime, timezone
 from easybuild.tools.version import VERSION as EASYBUILD_VERSION
-from easybuild.framework.easyconfig.easyconfig import process_easyconfig, get_toolchain_hierarchy
+from easybuild.framework.easyconfig.easyconfig import (
+    process_easyconfig,
+    get_toolchain_hierarchy,
+)
 from easybuild.tools.options import set_up_configuration
 from easybuild.tools.include import include_easyblocks
 from contextlib import contextmanager
 
 VALID_EESSI_VERSIONS = ["2025.06", "2023.06"]
-
-EESSI_REFERENCE_ARCHITECTURE = "x86_64/intel/icelake"
 
 # Give order to my toolchains so I can easily figure out what "latest" means
 EESSI_SUPPORTED_TOP_LEVEL_TOOLCHAINS = OrderedDict(
@@ -49,7 +50,11 @@ def suppress_stdout():
 
 def module_dict_from_module_string(module):
     module_name, module_version = module.split("/", 1)
-    module_dict = {"module_name": module_name, "module_version": module_version, "full_module_name": module}
+    module_dict = {
+        "module_name": module_name,
+        "module_version": module_version,
+        "full_module_name": module,
+    }
 
     return module_dict
 
@@ -182,6 +187,16 @@ def collect_eb_files(base_path):
     return dict(eb_files_by_version)
 
 
+def merge_dicts(d1, d2):
+    merged = defaultdict(list)
+
+    for d in (d1, d2):
+        for key, value in d.items():
+            merged[key].extend(value)
+
+    return dict(merged)
+
+
 if __name__ == "__main__":
     # The EESSI version is provided as an argument
     parser = argparse.ArgumentParser(description="EESSI version to scan.")
@@ -199,10 +214,23 @@ if __name__ == "__main__":
     print(f"Using EESSI version: {eessi_version}")
 
     # We use a single architecture path to gather information about the software versions
-    base_path = (
-        f"/cvmfs/software.eessi.io/versions/{eessi_version}/software/linux/{EESSI_REFERENCE_ARCHITECTURE}/software/"
-    )
-    result = collect_eb_files(base_path)
+    eessi_reference_architecture = os.getenv("EESSI_ARCHDETECT_OPTIONS_OVERRIDE", False)
+    if not eessi_reference_architecture:
+        print("You must have selected a CPU architecture via EESSI_ARCHDETECT_OPTIONS_OVERRIDE")
+        exit()
+    base_path = f"/cvmfs/software.eessi.io/versions/{eessi_version}/software/linux/{eessi_reference_architecture}"
+    cpu_easyconfig_files_dict = collect_eb_files(os.path.join(base_path, "software"))
+    # We also gather all the acclerator installations for NVIDIA-enabled packages
+    # We're not typically running this script on a node with a GPU so an override must have been set
+    eessi_reference_nvidia_architecture = os.getenv("EESSI_ACCELERATOR_TARGET_OVERRIDE", False)
+    if not eessi_reference_nvidia_architecture:
+        print("You must have selected a GPU architecture via EESSI_ACCELERATOR_TARGET_OVERRIDE")
+        exit()
+    accel_base_path = os.path.join(base_path, eessi_reference_nvidia_architecture)
+    accel_easyconfig_files_dict = collect_eb_files(os.path.join(accel_base_path, "software"))
+
+    # Merge the easyconfig files
+    easyconfig_files_dict = merge_dicts(cpu_easyconfig_files_dict, accel_easyconfig_files_dict)
 
     set_up_configuration(args="")
     tmpdir = tempfile.mkdtemp()
@@ -224,23 +252,23 @@ if __name__ == "__main__":
             {"name": "system", "version": "system"}
         ] + get_toolchain_hierarchy(top_level_toolchain)
 
-    for eb_version_of_install, files in sorted(result.items()):
+    for eb_version_of_install, easyconfigs in sorted(easyconfig_files_dict.items()):
         print(f"Major version {eb_version_of_install}:")
         if eb_version_of_install == str(EASYBUILD_VERSION.version[0]):
-            total_files = len(files)
-            for i, file in enumerate(files, start=1):
-                percent = (i / total_files) * 100
-                print(f"{percent:.1f}% - {file}")
+            total_easyconfigs = len(easyconfigs)
+            for i, easyconfig in enumerate(easyconfigs, start=1):
+                percent = (i / total_easyconfigs) * 100
+                print(f"{percent:.1f}% - {easyconfig}")
 
                 # Don't try to parse an EasyBuild easyconfig that is not the same major release
-                if "/software/EasyBuild/" in file and f"/EasyBuild/{eb_version_of_install}" not in file:
+                if "/software/EasyBuild/" in easyconfig and f"/EasyBuild/{eb_version_of_install}" not in easyconfig:
                     continue
                 # print(process_easyconfig(path)[0]['ec'].asdict())
 
-                eb_hooks_path = use_timestamped_reprod_if_exists(f"{os.path.dirname(file)}/reprod/easyblocks")
+                eb_hooks_path = use_timestamped_reprod_if_exists(f"{os.path.dirname(easyconfig)}/reprod/easyblocks")
                 easyblocks_dir = include_easyblocks(tmpdir, [eb_hooks_path + "/*.py"])
                 with suppress_stdout():
-                    parsed_ec = process_easyconfig(file)[0]
+                    parsed_ec = process_easyconfig(easyconfig)[0]
                 # included easyblocks are the first entry in sys.path, so just pop them but keep a list of what was used
                 sys.path.pop(0)
                 easyblocks_used = [
@@ -252,26 +280,29 @@ if __name__ == "__main__":
 
                 # Store everything we now know about the installation as a dict
                 # Use the path as the key since we know it is unique
-                eessi_software["eessi_version"][eessi_version][file] = parsed_ec["ec"].asdict()
-                eessi_software["eessi_version"][eessi_version][file]["mtime"] = os.path.getmtime(file)
+                eessi_software["eessi_version"][eessi_version][easyconfig] = parsed_ec["ec"].asdict()
+                eessi_software["eessi_version"][eessi_version][easyconfig]["mtime"] = os.path.getmtime(easyconfig)
 
                 # Make sure we can load the module before adding it's information to the main dict
                 try:
-                    eessi_software["eessi_version"][eessi_version][file]["required_modules"] = load_and_list_modules(
-                        parsed_ec["full_mod_name"]
+                    eessi_software["eessi_version"][eessi_version][easyconfig]["required_modules"] = (
+                        load_and_list_modules(parsed_ec["full_mod_name"])
                     )
                 except RuntimeError as e:
-                    print(f"Ignoring {file} due to error processing module: {e}")
-                    eessi_software["eessi_version"][eessi_version].pop(file)
+                    print(f"Ignoring {easyconfig} due to error processing module: {e}")
+                    eessi_software["eessi_version"][eessi_version].pop(easyconfig)
                     continue
 
                 # Add important data that is related to the module environment
-                eessi_software["eessi_version"][eessi_version][file]["module"] = module_dict_from_module_string(
+                eessi_software["eessi_version"][eessi_version][easyconfig]["module"] = module_dict_from_module_string(
                     parsed_ec["full_mod_name"]
                 )
                 # Retain the easyblocks used so we can use a heuristic to figure out the type of extensions (R, Python, Perl)
-                eessi_software["eessi_version"][eessi_version][file]["easyblocks"] = easyblocks_used
+                eessi_software["eessi_version"][eessi_version][easyconfig]["easyblocks"] = easyblocks_used
 
     # Store the result
-    with open(f"eessi_software_{eessi_version}-eb{str(EASYBUILD_VERSION.version[0])}.yaml", "w") as f:
+    with open(
+        f"eessi_software_{eessi_version}-eb{str(EASYBUILD_VERSION.version[0])}.yaml",
+        "w",
+    ) as f:
         yaml.dump(eessi_software, f)
