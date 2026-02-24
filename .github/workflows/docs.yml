@@ -36,13 +36,15 @@ jobs:
           # Set CPU override for the stack to query
           export EESSI_ARCHDETECT_OPTIONS_OVERRIDE="x86_64/intel/icelake"
           # Set GPU overrides for the stack to query (we have no GPU, so also override the GPU check)
-          export EESSI_ACCELERATOR_TARGET_OVERRIDE="accel/nvidia/cc90"
           export EESSI_OVERRIDE_GPU_CHECK=1
           # First do 2023.06 for EB 4
+          export EESSI_ACCELERATOR_TARGET_OVERRIDE="accel/nvidia/cc80"  # Stick to 8.0 for EB4 as the options for 9.0 are not understood there
           ( module load EESSI/2023.06 && module load EasyBuild/4 && module load EESSI-extend && python scripts/generate_data_files.py --eessi-version=2023.06 ) &
           # then 2023.06 for EB 5
+          export EESSI_ACCELERATOR_TARGET_OVERRIDE="accel/nvidia/cc90"
           ( module load EESSI/2023.06 && module load EasyBuild/5 && module load EESSI-extend && python scripts/generate_data_files.py --eessi-version=2023.06 ) &
           # then 2025.06 for EB 5 (does not have EB4)
+          export EESSI_ACCELERATOR_TARGET_OVERRIDE="accel/nvidia/cc90"
           ( module load EESSI/2025.06 && module load EasyBuild/5 && module load EESSI-extend && python scripts/generate_data_files.py --eessi-version=2025.06 ) &
           # Merge all these results together
           wait
