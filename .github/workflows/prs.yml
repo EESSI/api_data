@@ -69,4 +69,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: eessi-api-metadata
-          path: docs/data/eessi_api_metadata_software*.json
+          path: docs/data/eessi_api_metadata_*software*.json
