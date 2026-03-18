@@ -43,7 +43,7 @@ jobs:
           # Also test RISC-V
           rm eessi*.yaml
           # Need to set environment variables after loading EESSI to avoid problems with EESSI module
-          ( module load EESSI/2025.06 && export EESSI_ARCHDETECT_OPTIONS_OVERRIDE="riscv64/generic" && export EESSI_ACCELERATOR_TARGET_OVERRIDE="doesnotexist" && module load EasyBuild/5 && python generate_data_files.py --eessi-version 2025.06-001 --repository "dev.eessi.io/riscv" )
+          ( module load EESSI/2025.06 && export EESSI_ARCHDETECT_OPTIONS_OVERRIDE="riscv64/generic" && export EESSI_ACCELERATOR_TARGET_OVERRIDE="doesnotexist" && module load EasyBuild/5 && python scripts/generate_data_files.py --eessi-version 2025.06-001 --repository "dev.eessi.io/riscv" )
           python scripts/merge_data_files.py out_riscv.yaml eessi*.yaml
           mv out_riscv.yaml docs/data/eessi_software_metadata_riscv.yaml
 
