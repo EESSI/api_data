@@ -24,6 +24,10 @@ ARCHITECTURES = [
     "x86_64/intel/cascadelake",
 ]
 
+RISCV_ARCHITECTURES = [
+    "riscv64/generic",
+]
+
 NVIDIA_ARCHITECTURES = [
     "accel/nvidia/cc70",
     "accel/nvidia/cc80",
@@ -63,7 +67,11 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
     # 1) Detect the architecture substring inside the path
     base_version_dict["cpu_arch"] = []
     detected_arch = None
-    for arch in ARCHITECTURES:
+    if '/riscv64/' in original_path:
+        architecture_group = RISCV_ARCHITECTURES
+    else:
+        architecture_group = ARCHITECTURES
+    for arch in architecture_group:
         if f"/{arch}/" in original_path:
             detected_arch = arch
             break
@@ -89,7 +97,7 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
     spider_cache = before_arch + detected_arch + "/.lmod/cache/spiderT.lua"
 
     # 3) Substitute each architecture and test module file existence in spider cache
-    for arch in ARCHITECTURES:
+    for arch in architecture_group:
         substituted_modulefile = modulefile.replace(detected_arch, arch)
         substituted_spider_cache = spider_cache.replace(detected_arch, arch)
         # os.path.exists is very expensive for CVMFS so we just look for the file in the spider cache
@@ -368,7 +376,7 @@ def main():
     base_json_metadata["architectures_map"] = {}
     for eessi_version in eessi_versions:
         base_json_metadata["architectures_map"][eessi_version] = {}
-        for architecture in ARCHITECTURES:
+        for architecture in ARCHITECTURES + RISCV_ARCHITECTURES:
             base_json_metadata["architectures_map"][eessi_version][architecture] = architecture
     base_json_metadata["gpu_architectures_map"] = {}
     base_json_metadata["category_details"] = {}
