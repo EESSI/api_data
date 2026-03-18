@@ -100,8 +100,11 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
     for arch in architecture_group:
         substituted_modulefile = modulefile.replace(detected_arch, arch)
         substituted_spider_cache = spider_cache.replace(detected_arch, arch)
-        # os.path.exists is very expensive for CVMFS so we just look for the file in the spider cache
-        found = subprocess.run(["grep", "-q", substituted_modulefile, substituted_spider_cache]).returncode == 0
+        # os.path.exists is very expensive for CVMFS so we just look for the file in the spider cache (if we can)
+        if os.path.exists(substituted_spider_cache):
+            found = subprocess.run(["grep", "-q", substituted_modulefile, substituted_spider_cache]).returncode == 0
+        else:
+            found = os.path.exists(substituted_modulefile)
         if found:
             base_version_dict["cpu_arch"].append(arch)
             # If we have an accelerator module let's check which architectures are supported

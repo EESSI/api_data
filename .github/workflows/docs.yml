@@ -60,6 +60,7 @@ jobs:
           # Merge all these results together
           python scripts/merge_data_files.py out.yaml eessi*.yaml
           mv out.yaml docs/data/eessi_software_metadata.yaml
+
           # Also do RISC-V repository
           rm eessi*.yaml
           export EESSI_ARCHDETECT_OPTIONS_OVERRIDE="riscv64/generic"
@@ -67,11 +68,18 @@ jobs:
           ( module load EESSI/2025.06 && module load EasyBuild/5 && python generate_data_files.py --eessi-version 2025.06-001 --repository "dev.eessi.io/riscv" )
           python scripts/merge_data_files.py out_riscv.yaml eessi*.yaml
           mv out_riscv.yaml docs/data/eessi_software_metadata_riscv.yaml
+
           # Generate json data files and markdown index/description for them
           cd docs/data
           python ../../scripts/process_eessi_software_metadata.py eessi_software_metadata.yaml eessi_api_metadata
+          python ../../scripts/process_eessi_software_metadata.py eessi_software_metadata_riscv.yaml eessi_api_metadata_riscv
           python ../../scripts/calculate_hashes.py
-          for json_file in *.json; do
+          for json_file in *metadata.json; do
+            python ../../scripts/generate_schema_md.py $json_file >> index.md
+          done
+          echo "" >> index.md
+          echo "### RISC-V datafiles"  >> index.md
+          for json_file in *metadata_riscv.json; do
             python ../../scripts/generate_schema_md.py $json_file >> index.md
           done
       - run: |
