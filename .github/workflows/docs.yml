@@ -64,21 +64,36 @@ jobs:
           # Also do RISC-V repository
           rm eessi*.yaml
           # Need to set environment variables after loading EESSI to avoid problems with EESSI module
-          ( module load EESSI/2025.06 && export EESSI_ARCHDETECT_OPTIONS_OVERRIDE="riscv64/generic" && export EESSI_ACCELERATOR_TARGET_OVERRIDE="doesnotexist" && module load EasyBuild/5 && python scripts/generate_data_files.py --eessi-version 2025.06-001 --repository "dev.eessi.io/riscv" )
+          (
+            module purge
+            export EESSI_DEBUG_INIT=1
+            export EESSI_VERSION_OVERRIDE=2025.06-001
+            export EESSI_ARCHDETECT_OPTIONS_OVERRIDE=riscv64/generic
+            export EESSI_ACCELERATOR_TARGET_OVERRIDE="doesnotexist"
+            # Need to fake uname to convince EESSI we are on a RISC-V system
+            uname() { echo "riscv64"; }
+            export -f uname
+            module load EESSI/2025.06
+            # Can't run binaries from compat layer so remove them
+            export PATH=$(echo "$PATH" | /usr/bin/tr ':' '\n' | /usr/bin/grep -v '^/cvmfs' | /usr/bin/paste -sd ':' -)
+            module load EasyBuild/5
+            module load EESSI-extend
+            python scripts/generate_data_files.py --eessi-version 2025.06-001 --repository "dev.eessi.io/riscv"
+          )
           python scripts/merge_data_files.py out_riscv.yaml eessi*.yaml
-          mv out_riscv.yaml docs/data/eessi_software_metadata_riscv.yaml
+          mv out_riscv.yaml docs/data/eessi_software_metadata-riscv.yaml
 
           # Generate json data files and markdown index/description for them
           cd docs/data
           python ../../scripts/process_eessi_software_metadata.py eessi_software_metadata.yaml eessi_api_metadata
-          python ../../scripts/process_eessi_software_metadata.py eessi_software_metadata_riscv.yaml eessi_api_metadata_riscv
+          python ../../scripts/process_eessi_software_metadata.py eessi_software_metadata-riscv.yaml eessi_api_metadata-riscv
           python ../../scripts/calculate_hashes.py
-          for json_file in *metadata.json; do
+          for json_file in eessi_api_metadata_*.json; do
             python ../../scripts/generate_schema_md.py $json_file >> index.md
           done
           echo "" >> index.md
           echo "### RISC-V datafiles"  >> index.md
-          for json_file in *metadata_riscv.json; do
+          for json_file in eessi_api_metadata-riscv*.json; do
             python ../../scripts/generate_schema_md.py $json_file >> index.md
           done
       - run: |
