@@ -78,6 +78,7 @@ jobs:
           done
           echo "" >> index.md
           echo "### RISC-V datafiles"  >> index.md
+          echo "" >> index.md
           for json_file in eessi_api_metadata-riscv*.json; do
             python ../../scripts/generate_schema_md.py $json_file >> index.md
           done
