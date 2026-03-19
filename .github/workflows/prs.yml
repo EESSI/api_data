@@ -48,7 +48,7 @@ jobs:
 
           # Also test RISC-V
           rm eessi*.yaml
-          # Need to set environment variables after loading EESSI to avoid problems with EESSI module
+          # Need to set environment variables to load EESSI module for RISC-V
           (
             module purge
             export EESSI_DEBUG_INIT=1
@@ -59,7 +59,7 @@ jobs:
             uname() { echo "riscv64"; }
             export -f uname
             module load EESSI/2025.06
-            # Can't run binaries from compat layer so remove them
+            # Can't run RISC-V binaries from compat layer so remove them
             export PATH=$(echo "$PATH" | /usr/bin/tr ':' '\n' | /usr/bin/grep -v '^/cvmfs' | /usr/bin/paste -sd ':' -)
             module load EasyBuild/5
             module load EESSI-extend
@@ -81,7 +81,6 @@ jobs:
           for json_file in eessi_api_metadata-riscv*.json; do
             python ../../scripts/generate_schema_md.py $json_file >> index.md
           done
-          cat index.md
       - name: Test building the website
         run: |
           source /tmp/venv_docs/bin/activate
@@ -90,4 +89,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: eessi-api-metadata
-          path: docs/data/eessi_api_metadata_*software*.json
+          path: docs/data/eessi_api_metadata*software*.json

@@ -117,7 +117,15 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
                         # Let's not include the "accel/" part of the accel_arch 
                         base_version_dict["gpu_arch"][arch].append(accel_arch.replace("accel/", "", 1))
                     else:
-                        print(f"No module {accel_substituted_modulefile}...not adding software for architecture {arch}/{accel_arch}")
+                        # Let's not be too noisy here, we know we don't have some CUDA archs in 2023.06
+                        if not (
+                            accel_substituted_modulefile.startswith('/cvmfs/software.eessi.io/versions/2023.06')
+                            and accel_arch in ["accel/nvidia/cc100", "accel/nvidia/cc120"]
+                        ):
+                            print(
+                                f"No module {accel_substituted_modulefile}... "
+                                f"not adding software for architecture {arch}/{accel_arch}"
+                            )
                         continue
         else:
             print(f"No module {substituted_modulefile}...not adding software for architecture {arch}")
