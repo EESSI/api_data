@@ -263,6 +263,7 @@ if __name__ == "__main__":
 
     # Store the toolchain hierarchies supported by the EESSI version
     eessi_software["eessi_version"][eessi_version]["toolchain_hierarchy"] = {}
+    # RISC-V versions have a stub like -001 at the end, make sure to drop it
     for top_level_toolchain in EESSI_SUPPORTED_TOP_LEVEL_TOOLCHAINS[eessi_version.split("-")[0]]:
         # versions are typically 2024a/2024b etc. for top level toolchains
         # so let's use that to make sorting easy
