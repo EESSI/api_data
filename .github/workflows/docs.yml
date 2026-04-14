@@ -43,11 +43,11 @@ jobs:
           pid1=$!
           # then 2023.06 for EB 5
           export EESSI_ACCELERATOR_TARGET_OVERRIDE="accel/nvidia/cc90"
-          ( module load EESSI/2023.06 && module load EasyBuild/5 && module load EESSI-extend && python scripts/generate_data_files.py --eessi-version=2023.06 ) &
+          ( module load EESSI/2023.06 && module load EasyBuild/5.2 && module load EESSI-extend && python scripts/generate_data_files.py --eessi-version=2023.06 ) &
           pid2=$!
           # then 2025.06 for EB 5 (does not have EB4)
           export EESSI_ACCELERATOR_TARGET_OVERRIDE="accel/nvidia/cc90"
-          ( module load EESSI/2025.06 && module load EasyBuild/5 && module load EESSI-extend && python scripts/generate_data_files.py --eessi-version=2025.06 ) &
+          ( module load EESSI/2025.06 && module load EasyBuild/5.2 && module load EESSI-extend && python scripts/generate_data_files.py --eessi-version=2025.06 ) &
           pid3=$!
           fail=0  # initialise
           wait $pid1 || fail=1
