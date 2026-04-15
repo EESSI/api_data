@@ -274,9 +274,10 @@ if __name__ == "__main__":
                 orig_easyblocks_path = list(easybuild.easyblocks.__path__)
                 orig_generic_easyblocks_path = list(easybuild.easyblocks.generic.__path__)
                 
-                easyblocks_dir = include_easyblocks(tmpdir, [eb_hooks_path + "/*.py"])
                 parsed_using_fallback = False
+                include_easyblocks_dir = None
                 try:
+                    include_easyblocks_dir = include_easyblocks(tmpdir, [eb_hooks_path + "/*.py"])
                     with suppress_stdout():
                         parsed_ec = process_easyconfig(easyconfig)[0]
                 except Exception:
@@ -305,6 +306,13 @@ if __name__ == "__main__":
                         print(f"Fallback parsing of {easyconfig} without using include_easyblocks() failed!")
                         raise  # or should we break?
                 finally:
+                    if parsed_using_fallback:
+                        # Let's still report the easyblocks used by the actual installation
+                        easyblocks_dir = eb_hooks_path
+                    else:
+                        # Means include_easyblocks must have worked
+                        easyblocks_dir = include_easyblocks_dir
+
                     easyblocks_used = [
                         os.path.basename(f)
                         for f in glob.glob(f"{easyblocks_dir}/**/*.py", recursive=True)
@@ -318,7 +326,8 @@ if __name__ == "__main__":
                     easybuild.easyblocks.__path__[:] = orig_easyblocks_path
                     easybuild.easyblocks.generic.__path__[:] = orig_generic_easyblocks_path
 
-                    shutil.rmtree(easyblocks_dir, ignore_errors=True)
+                    if include_easyblocks_dir:
+                        shutil.rmtree(include_easyblocks_dir, ignore_errors=True)
 
                 # Store everything we now know about the installation as a dict
                 # Use the path as the key since we know it is unique
