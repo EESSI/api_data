@@ -299,6 +299,7 @@ if __name__ == "__main__":
                     try:
                         with suppress_stdout():
                             parsed_ec = process_easyconfig(easyconfig)[0]
+                        print(f"Parsed {easyconfig} using fallback as using include_easyblocks() failed")
                         parsed_using_fallback = True
                     except Exception:
                         print(f"Fallback parsing of {easyconfig} without using include_easyblocks() failed!")
