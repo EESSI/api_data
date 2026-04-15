@@ -252,6 +252,7 @@ if __name__ == "__main__":
             {"name": "system", "version": "system"}
         ] + get_toolchain_hierarchy(top_level_toolchain)
 
+    failed_include_easyblocks = []
     for eb_version_of_install, easyconfigs in sorted(easyconfig_files_dict.items()):
         print(f"Major version {eb_version_of_install}:")
         if eb_version_of_install == str(EASYBUILD_VERSION.version[0]):
@@ -333,7 +334,8 @@ if __name__ == "__main__":
                 # Use the path as the key since we know it is unique
                 eessi_software["eessi_version"][eessi_version][easyconfig] = parsed_ec["ec"].asdict()
                 if parsed_using_fallback:
-                    eessi_software["eessi_version"][eessi_version][easyconfig]["parsed_with_eb_version_fallback"] = EASYBUILD_VERSION
+                    failed_include_easyblocks.append(easyconfig)
+                    eessi_software["eessi_version"][eessi_version][easyconfig]["parsed_with_eb_version_fallback"] = str(EASYBUILD_VERSION)
                 else:
                     eessi_software["eessi_version"][eessi_version][easyconfig]["parsed_with_eb_version_fallback"] = False
                 eessi_software["eessi_version"][eessi_version][easyconfig]["mtime"] = os.path.getmtime(easyconfig)
@@ -361,3 +363,6 @@ if __name__ == "__main__":
         "w",
     ) as f:
         yaml.dump(eessi_software, f)
+
+    if failed_include_easyblocks:
+        print(f"Failed to include_easyblocks() for {failed_include_easyblocks}")
