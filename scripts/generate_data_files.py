@@ -274,19 +274,41 @@ if __name__ == "__main__":
                 orig_easyblocks_path = list(easybuild.easyblocks.__path__)
                 orig_generic_easyblocks_path = list(easybuild.easyblocks.generic.__path__)
                 
-                easyblocks_dir = None
+                easyblocks_dir = include_easyblocks(tmpdir, [eb_hooks_path + "/*.py"])
+                parsed_using_fallback = False
                 try:
-                    easyblocks_dir = include_easyblocks(tmpdir, [eb_hooks_path + "/*.py"])
                     with suppress_stdout():
                         parsed_ec = process_easyconfig(easyconfig)[0]
+                except Exception:
+                    # There are cases where a an easyblock inherits from a class but also imports
+                    # something from another easyblock which inherits from the same class, the import
+                    # easyblock is not included in the reproducibility dir as it is not an inherited
+                    # class. This can mean it may reference something that
+                    # is not available in the "legacy" easyblock included by include_easyblock().
+                    # Example is Tkinter, which inherits from EB_Python but also imports from
+                    # pythonpackage (which also imports from EB_Python). pythonpackage is being
+                    # picked up from the EasyBuild release being used for the parsing.
+
+                    # Restore the original env and retry without include_easyblocks
+                    for module in list(sys.modules):
+                        if module.startswith("easybuild.easyblocks"):
+                            del sys.modules[module]
+                    sys.path[:] = orig_sys_path
+                    easybuild.easyblocks.__path__[:] = orig_easyblocks_path
+                    easybuild.easyblocks.generic.__path__[:] = orig_generic_easyblocks_path
+                    try:
+                        with suppress_stdout():
+                            parsed_ec = process_easyconfig(easyconfig)[0]
+                        parsed_using_fallback = True
+                    except Exception:
+                        print(f"Fallback parsing of {easyconfig} without using include_easyblocks() failed!")
+                        raise  # or should we break?
+                finally:
                     easyblocks_used = [
                         os.path.basename(f)
                         for f in glob.glob(f"{easyblocks_dir}/**/*.py", recursive=True)
                         if os.path.basename(f) != "__init__.py"
                     ]
-                except Exception:
-                    raise  # or should we break?
-                finally:
                     # ALWAYS restore
                     for module in list(sys.modules):
                         if module.startswith("easybuild.easyblocks"):
@@ -300,6 +322,10 @@ if __name__ == "__main__":
                 # Store everything we now know about the installation as a dict
                 # Use the path as the key since we know it is unique
                 eessi_software["eessi_version"][eessi_version][easyconfig] = parsed_ec["ec"].asdict()
+                if parsed_using_fallback:
+                    eessi_software["eessi_version"][eessi_version][easyconfig]["parsed_with_eb_version_fallback"] = EASYBUILD_VERSION
+                else:
+                    eessi_software["eessi_version"][eessi_version][easyconfig]["parsed_with_eb_version_fallback"] = False
                 eessi_software["eessi_version"][eessi_version][easyconfig]["mtime"] = os.path.getmtime(easyconfig)
 
                 # Make sure we can load the module before adding it's information to the main dict
