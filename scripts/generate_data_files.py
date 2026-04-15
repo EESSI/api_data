@@ -266,17 +266,36 @@ if __name__ == "__main__":
                 # print(process_easyconfig(path)[0]['ec'].asdict())
 
                 eb_hooks_path = use_timestamped_reprod_if_exists(f"{os.path.dirname(easyconfig)}/reprod/easyblocks")
-                easyblocks_dir = include_easyblocks(tmpdir, [eb_hooks_path + "/*.py"])
-                with suppress_stdout():
-                    parsed_ec = process_easyconfig(easyconfig)[0]
-                # included easyblocks are the first entry in sys.path, so just pop them but keep a list of what was used
-                sys.path.pop(0)
-                easyblocks_used = [
-                    os.path.basename(f)
-                    for f in glob.glob(f"{easyblocks_dir}/**/*.py", recursive=True)
-                    if os.path.basename(f) != "__init__.py"
-                ]
-                shutil.rmtree(easyblocks_dir)
+                
+                # Store our easyblock-related state before including easyblocks (which modify all these)
+                orig_sys_path = list(sys.path)
+                import easybuild.easyblocks
+                import easybuild.easyblocks.generic
+                orig_easyblocks_path = list(easybuild.easyblocks.__path__)
+                orig_generic_easyblocks_path = list(easybuild.easyblocks.generic.__path__)
+                
+                easyblocks_dir = None
+                try:
+                    easyblocks_dir = include_easyblocks(tmpdir, [eb_hooks_path + "/*.py"])
+                    with suppress_stdout():
+                        parsed_ec = process_easyconfig(easyconfig)[0]
+                    easyblocks_used = [
+                        os.path.basename(f)
+                        for f in glob.glob(f"{easyblocks_dir}/**/*.py", recursive=True)
+                        if os.path.basename(f) != "__init__.py"
+                    ]
+                except Exception:
+                    raise  # or should we break?
+                finally:
+                    # ALWAYS restore
+                    for module in list(sys.modules):
+                        if module.startswith("easybuild.easyblocks"):
+                            del sys.modules[module]
+                    sys.path[:] = orig_sys_path
+                    easybuild.easyblocks.__path__[:] = orig_easyblocks_path
+                    easybuild.easyblocks.generic.__path__[:] = orig_generic_easyblocks_path
+
+                    shutil.rmtree(easyblocks_dir, ignore_errors=True)
 
                 # Store everything we now know about the installation as a dict
                 # Use the path as the key since we know it is unique
