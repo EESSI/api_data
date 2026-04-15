@@ -252,6 +252,7 @@ if __name__ == "__main__":
             {"name": "system", "version": "system"}
         ] + get_toolchain_hierarchy(top_level_toolchain)
 
+    failed_include_easyblocks = []
     for eb_version_of_install, easyconfigs in sorted(easyconfig_files_dict.items()):
         print(f"Major version {eb_version_of_install}:")
         if eb_version_of_install == str(EASYBUILD_VERSION.version[0]):
@@ -266,21 +267,77 @@ if __name__ == "__main__":
                 # print(process_easyconfig(path)[0]['ec'].asdict())
 
                 eb_hooks_path = use_timestamped_reprod_if_exists(f"{os.path.dirname(easyconfig)}/reprod/easyblocks")
-                easyblocks_dir = include_easyblocks(tmpdir, [eb_hooks_path + "/*.py"])
-                with suppress_stdout():
-                    parsed_ec = process_easyconfig(easyconfig)[0]
-                # included easyblocks are the first entry in sys.path, so just pop them but keep a list of what was used
-                sys.path.pop(0)
-                easyblocks_used = [
-                    os.path.basename(f)
-                    for f in glob.glob(f"{easyblocks_dir}/**/*.py", recursive=True)
-                    if os.path.basename(f) != "__init__.py"
-                ]
-                shutil.rmtree(easyblocks_dir)
+                
+                # Store our easyblock-related state before including easyblocks (which modify all these)
+                orig_sys_path = list(sys.path)
+                import easybuild.easyblocks
+                import easybuild.easyblocks.generic
+                orig_easyblocks_path = list(easybuild.easyblocks.__path__)
+                orig_generic_easyblocks_path = list(easybuild.easyblocks.generic.__path__)
+                
+                parsed_using_fallback = False
+                include_easyblocks_dir = None
+                try:
+                    include_easyblocks_dir = include_easyblocks(tmpdir, [eb_hooks_path + "/*.py"])
+                    with suppress_stdout():
+                        parsed_ec = process_easyconfig(easyconfig)[0]
+                except Exception:
+                    # There are cases where a an easyblock inherits from a class but also imports
+                    # something from another easyblock which inherits from the same class, the import
+                    # easyblock is not included in the reproducibility dir as it is not an inherited
+                    # class. This can mean it may reference something that
+                    # is not available in the "legacy" easyblock included by include_easyblock().
+                    # Example is Tkinter, which inherits from EB_Python but also imports from
+                    # pythonpackage (which also imports from EB_Python). pythonpackage is being
+                    # picked up from the EasyBuild release being used for the parsing.
+
+                    # Restore the original env and retry without include_easyblocks
+                    for module in list(sys.modules):
+                        if module.startswith("easybuild.easyblocks"):
+                            del sys.modules[module]
+                    sys.path[:] = orig_sys_path
+                    easybuild.easyblocks.__path__[:] = orig_easyblocks_path
+                    easybuild.easyblocks.generic.__path__[:] = orig_generic_easyblocks_path
+                    try:
+                        with suppress_stdout():
+                            parsed_ec = process_easyconfig(easyconfig)[0]
+                        print(f"Parsed {easyconfig} using fallback as using include_easyblocks() failed")
+                        parsed_using_fallback = True
+                    except Exception:
+                        print(f"Fallback parsing of {easyconfig} without using include_easyblocks() failed!")
+                        raise  # or should we break?
+                finally:
+                    if parsed_using_fallback:
+                        # Let's still report the easyblocks used by the actual installation
+                        easyblocks_dir = eb_hooks_path
+                    else:
+                        # Means include_easyblocks must have worked
+                        easyblocks_dir = include_easyblocks_dir
+
+                    easyblocks_used = [
+                        os.path.basename(f)
+                        for f in glob.glob(f"{easyblocks_dir}/**/*.py", recursive=True)
+                        if os.path.basename(f) != "__init__.py"
+                    ]
+                    # ALWAYS restore
+                    for module in list(sys.modules):
+                        if module.startswith("easybuild.easyblocks"):
+                            del sys.modules[module]
+                    sys.path[:] = orig_sys_path
+                    easybuild.easyblocks.__path__[:] = orig_easyblocks_path
+                    easybuild.easyblocks.generic.__path__[:] = orig_generic_easyblocks_path
+
+                    if include_easyblocks_dir:
+                        shutil.rmtree(include_easyblocks_dir, ignore_errors=True)
 
                 # Store everything we now know about the installation as a dict
                 # Use the path as the key since we know it is unique
                 eessi_software["eessi_version"][eessi_version][easyconfig] = parsed_ec["ec"].asdict()
+                if parsed_using_fallback:
+                    failed_include_easyblocks.append(easyconfig)
+                    eessi_software["eessi_version"][eessi_version][easyconfig]["parsed_with_eb_version_fallback"] = str(EASYBUILD_VERSION)
+                else:
+                    eessi_software["eessi_version"][eessi_version][easyconfig]["parsed_with_eb_version_fallback"] = False
                 eessi_software["eessi_version"][eessi_version][easyconfig]["mtime"] = os.path.getmtime(easyconfig)
 
                 # Make sure we can load the module before adding it's information to the main dict
@@ -306,3 +363,6 @@ if __name__ == "__main__":
         "w",
     ) as f:
         yaml.dump(eessi_software, f)
+
+    if failed_include_easyblocks:
+        print(f"Failed to include_easyblocks() for {failed_include_easyblocks}")
