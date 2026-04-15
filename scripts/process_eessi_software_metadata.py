@@ -24,6 +24,10 @@ ARCHITECTURES = [
     "x86_64/intel/cascadelake",
 ]
 
+RISCV_ARCHITECTURES = [
+    "riscv64/generic",
+]
+
 NVIDIA_ARCHITECTURES = [
     "accel/nvidia/cc70",
     "accel/nvidia/cc80",
@@ -63,7 +67,11 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
     # 1) Detect the architecture substring inside the path
     base_version_dict["cpu_arch"] = []
     detected_arch = None
-    for arch in ARCHITECTURES:
+    if '/riscv64/' in original_path:
+        architecture_group = RISCV_ARCHITECTURES
+    else:
+        architecture_group = ARCHITECTURES
+    for arch in architecture_group:
         if f"/{arch}/" in original_path:
             detected_arch = arch
             break
@@ -89,11 +97,14 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
     spider_cache = before_arch + detected_arch + "/.lmod/cache/spiderT.lua"
 
     # 3) Substitute each architecture and test module file existence in spider cache
-    for arch in ARCHITECTURES:
+    for arch in architecture_group:
         substituted_modulefile = modulefile.replace(detected_arch, arch)
         substituted_spider_cache = spider_cache.replace(detected_arch, arch)
-        # os.path.exists is very expensive for CVMFS so we just look for the file in the spider cache
-        found = subprocess.run(["grep", "-q", substituted_modulefile, substituted_spider_cache]).returncode == 0
+        # os.path.exists is very expensive for CVMFS so we just look for the file in the spider cache (if we can)
+        if os.path.exists(substituted_spider_cache):
+            found = subprocess.run(["grep", "-q", substituted_modulefile, substituted_spider_cache]).returncode == 0
+        else:
+            found = os.path.exists(substituted_modulefile)
         if found:
             base_version_dict["cpu_arch"].append(arch)
             # If we have an accelerator module let's check which architectures are supported
@@ -106,7 +117,15 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
                         # Let's not include the "accel/" part of the accel_arch 
                         base_version_dict["gpu_arch"][arch].append(accel_arch.replace("accel/", "", 1))
                     else:
-                        print(f"No module {accel_substituted_modulefile}...not adding software for architecture {arch}/{accel_arch}")
+                        # Let's not be too noisy here, we know we don't have some CUDA archs in 2023.06
+                        if not (
+                            accel_substituted_modulefile.startswith('/cvmfs/software.eessi.io/versions/2023.06')
+                            and accel_arch in ["accel/nvidia/cc100", "accel/nvidia/cc120"]
+                        ):
+                            print(
+                                f"No module {accel_substituted_modulefile}... "
+                                f"not adding software for architecture {arch}/{accel_arch}"
+                            )
                         continue
         else:
             print(f"No module {substituted_modulefile}...not adding software for architecture {arch}")
@@ -368,7 +387,7 @@ def main():
     base_json_metadata["architectures_map"] = {}
     for eessi_version in eessi_versions:
         base_json_metadata["architectures_map"][eessi_version] = {}
-        for architecture in ARCHITECTURES:
+        for architecture in ARCHITECTURES + RISCV_ARCHITECTURES:
             base_json_metadata["architectures_map"][eessi_version][architecture] = architecture
     base_json_metadata["gpu_architectures_map"] = {}
     base_json_metadata["category_details"] = {}

@@ -18,7 +18,16 @@ from easybuild.tools.options import set_up_configuration
 from easybuild.tools.include import include_easyblocks
 from contextlib import contextmanager
 
-VALID_EESSI_VERSIONS = ["2025.06", "2023.06"]
+SUPPORTED_REPOSITORIES = {
+        'software.eessi.io': ["2025.06", "2023.06"],
+        'dev.eessi.io/riscv': ["2025.06-001"],
+}
+
+VALID_EESSI_VERSIONS = [
+    version
+    for versions in SUPPORTED_REPOSITORIES.values()
+    for version in versions
+]
 
 # Give order to my toolchains so I can easily figure out what "latest" means
 EESSI_SUPPORTED_TOP_LEVEL_TOOLCHAINS = OrderedDict(
@@ -205,20 +214,31 @@ if __name__ == "__main__":
         "-e",
         required=True,
         choices=VALID_EESSI_VERSIONS,
-        help=f"Allowed versions: {', '.join(VALID_EESSI_VERSIONS)}",
+        help=f"Allowed versions (also dependent on repository): {', '.join(VALID_EESSI_VERSIONS)}",
+    )
+    parser.add_argument(
+        "--repository",
+        "-r",
+        default="software.eessi.io",
+        choices=SUPPORTED_REPOSITORIES.keys(),
+        help=f"Repository to scan: {', '.join(SUPPORTED_REPOSITORIES)} (default: %(default)s)",
     )
 
     args = parser.parse_args()
     eessi_version = args.eessi_version
+    repository = args.repository
+
+    if eessi_version not in SUPPORTED_REPOSITORIES[repository]:
+        raise ValueError(f"You must choose an EESSI version supported by the repository: {SUPPORTED_REPOSITORIES[repository]}")
 
     print(f"Using EESSI version: {eessi_version}")
 
     # We use a single architecture path to gather information about the software versions
     eessi_reference_architecture = os.getenv("EESSI_ARCHDETECT_OPTIONS_OVERRIDE", False)
     if not eessi_reference_architecture:
-        print("You must have selected a CPU architecture via EESSI_ARCHDETECT_OPTIONS_OVERRIDE")
+        print("You must have selected a CPU architecture via EESSI_ARCHDETECT_OPTIONS_OVERRIDE environment variable")
         exit()
-    base_path = f"/cvmfs/software.eessi.io/versions/{eessi_version}/software/linux/{eessi_reference_architecture}"
+    base_path = f"/cvmfs/{repository}/versions/{eessi_version}/software/linux/{eessi_reference_architecture}"
     cpu_easyconfig_files_dict = collect_eb_files(os.path.join(base_path, "software"))
     # We also gather all the acclerator installations for NVIDIA-enabled packages
     # We're not typically running this script on a node with a GPU so an override must have been set
@@ -243,7 +263,8 @@ if __name__ == "__main__":
 
     # Store the toolchain hierarchies supported by the EESSI version
     eessi_software["eessi_version"][eessi_version]["toolchain_hierarchy"] = {}
-    for top_level_toolchain in EESSI_SUPPORTED_TOP_LEVEL_TOOLCHAINS[eessi_version]:
+    # RISC-V versions have a stub like -001 at the end, make sure to drop it
+    for top_level_toolchain in EESSI_SUPPORTED_TOP_LEVEL_TOOLCHAINS[eessi_version.split("-")[0]]:
         # versions are typically 2024a/2024b etc. for top level toolchains
         # so let's use that to make sorting easy
         toolchain_family = f"{top_level_toolchain['version']}_{top_level_toolchain['name']}"
