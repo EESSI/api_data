@@ -33,6 +33,8 @@ jobs:
           module purge
           module unuse $MODULEPATH
           module use /cvmfs/software.eessi.io/init/modules/
+          # Use cached loads
+          export LMOD_CACHED_LOADS=yes
           # Set CPU override for the stack to query
           export EESSI_ARCHDETECT_OPTIONS_OVERRIDE="x86_64/intel/icelake"
           # Set GPU overrides for the stack to query (we have no GPU, so also override the GPU check)
