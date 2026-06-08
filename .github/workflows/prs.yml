@@ -54,13 +54,7 @@ jobs:
             export EESSI_DEBUG_INIT=1
             export EESSI_VERSION_OVERRIDE=2025.06-001
             export EESSI_ARCHDETECT_OPTIONS_OVERRIDE=riscv64/generic
-            export EESSI_ACCELERATOR_TARGET_OVERRIDE="doesnotexist"
-            # Need to fake uname to convince EESSI we are on a RISC-V system
-            uname() { echo "riscv64"; }
-            export -f uname
             module load EESSI/2025.06
-            # Can't run RISC-V binaries from compat layer so remove them
-            export PATH=$(echo "$PATH" | /usr/bin/tr ':' '\n' | /usr/bin/grep -v '^/cvmfs' | /usr/bin/paste -sd ':' -)
             module load EasyBuild/5
             module load EESSI-extend
             python scripts/generate_data_files.py --eessi-version 2025.06-001 --repository "dev.eessi.io/riscv"
