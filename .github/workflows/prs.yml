@@ -60,7 +60,6 @@ jobs:
             module load EESSI/2025.06
             module load EasyBuild/5
             module load EESSI-extend
-            module load EESSI/2025.0
             echo $MODULEPATH
             python scripts/generate_data_files.py --eessi-version 2025.06-001 --repository "dev.eessi.io/riscv"
           )
