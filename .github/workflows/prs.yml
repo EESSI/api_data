@@ -53,12 +53,14 @@ jobs:
             module --force purge
             export EESSI_DEBUG_INIT=1
             export EESSI_VERSION_OVERRIDE=2025.06-001
+            export EESSI_ARCHDETECT_OPTIONS_OVERRIDE=riscv64/generic
             export EESSI_SOFTWARE_SUBDIR_OVERRIDE=riscv64/generic
             export EESSI_ACCELERATOR_TARGET_OVERRIDE="does/not/exist"
             export EESSI_CPU_FAMILY_OVERRIDE=x86_64
             module load EESSI/2025.06
             module load EasyBuild/5
             module load EESSI-extend
+            module load EESSI/2025.0
             echo $MODULEPATH
             python scripts/generate_data_files.py --eessi-version 2025.06-001 --repository "dev.eessi.io/riscv"
           )
