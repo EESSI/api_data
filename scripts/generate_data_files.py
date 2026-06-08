@@ -77,7 +77,7 @@ def load_and_list_modules(full_module_name):
 
     # Run as one shell script so the same session is used
     cmd = f"""
-        out=$(module --ignore_cache load {full_module_name} 2>&1)
+        out=$(module load {full_module_name} 2>&1)
         status=$?
 
         if [ $status -ne 0 ]; then
