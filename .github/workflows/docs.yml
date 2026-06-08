@@ -69,6 +69,7 @@ jobs:
             export EESSI_DEBUG_INIT=1
             export EESSI_VERSION_OVERRIDE=2025.06-001
             export EESSI_ARCHDETECT_OPTIONS_OVERRIDE=riscv64/generic
+            unset EESSI_ACCELERATOR_TARGET_OVERRIDE
             module load EESSI/2025.06
             module load EasyBuild/5
             module load EESSI-extend
