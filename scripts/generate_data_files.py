@@ -77,7 +77,13 @@ def load_and_list_modules(full_module_name):
 
     # Run as one shell script so the same session is used
     cmd = f"""
-        module load {full_module_name} >/dev/null 2>&1 || exit 1
+        out=$(module load {full_module_name} 2>&1)
+        status=$?
+
+        if [ $status -ne 0 ]; then
+            echo "$out" >&2
+            exit $status
+        fi
         module --terse list 2>&1
     """
 
