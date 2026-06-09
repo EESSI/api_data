@@ -46,7 +46,7 @@ jobs:
             module load EasyBuild/5
             module load EESSI-extend
             python scripts/generate_data_files.py --eessi-version=2023.06
-          ) &
+          )
           # Merge all these results together
           wait
           ls *.yaml
