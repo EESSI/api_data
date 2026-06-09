@@ -25,17 +25,16 @@ jobs:
       - name: Generate API data
         run: |
           echo "Generating data files..."
-          module purge
-          module unuse $MODULEPATH
-          module use /cvmfs/software.eessi.io/init/modules/
-          # Set CPU override for the stack to query
-          export EESSI_ARCHDETECT_OPTIONS_OVERRIDE="x86_64/intel/icelake"
-          # Set GPU overrides for the stack to query (we have no GPU, so also override the GPU check)
-          export EESSI_ACCELERATOR_TARGET_OVERRIDE="accel/nvidia/cc90"
-          export EESSI_OVERRIDE_GPU_CHECK=1
+          
           # Only do 2023.06 for EB 5 since this is just a test
           (
             module --force purge
+            export EESSI_DEBUG_INIT=1
+            # Set CPU override for the stack to query
+            export EESSI_ARCHDETECT_OPTIONS_OVERRIDE="x86_64/intel/icelake"
+            # Set GPU overrides for the stack to query (we have no GPU, so also override the GPU check)
+            export EESSI_ACCELERATOR_TARGET_OVERRIDE="accel/nvidia/cc90"
+            export EESSI_OVERRIDE_GPU_CHECK=1
             module load EESSI/2023.06
             module load EasyBuild/5
             module load EESSI-extend
@@ -52,11 +51,11 @@ jobs:
           (
             module --force purge
             export EESSI_DEBUG_INIT=1
-            export EESSI_VERSION_OVERRIDE=2025.06-001
-            export EESSI_ARCHDETECT_OPTIONS_OVERRIDE=riscv64/generic
-            export EESSI_SOFTWARE_SUBDIR_OVERRIDE=riscv64/generic
+            export EESSI_VERSION_OVERRIDE="2025.06-001"
+            export EESSI_ARCHDETECT_OPTIONS_OVERRIDE="riscv64/generic"
+            export EESSI_SOFTWARE_SUBDIR_OVERRIDE="riscv64/generic"
             export EESSI_ACCELERATOR_TARGET_OVERRIDE="does/not/exist"
-            export EESSI_CPU_FAMILY_OVERRIDE=x86_64
+            export EESSI_CPU_FAMILY_OVERRIDE="x86_64"
             module load EESSI/2025.06
             module load EasyBuild/5
             module load EESSI-extend

@@ -76,14 +76,18 @@ def load_and_list_modules(full_module_name):
     """
 
     # Run as one shell script so the same session is used
+    # We first do a load attempt and catch any errors, if that works
+    # then do it for real
     cmd = f"""
         out=$(module load {full_module_name} 2>&1)
         status=$?
 
         if [ $status -ne 0 ]; then
             echo "$out" >&2
+            echo
             exit $status
         fi
+        module load {full_module_name} >/dev/null 2>&1 || exit 1
         module --terse list 2>&1
     """
 
