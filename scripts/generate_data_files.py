@@ -36,6 +36,7 @@ EESSI_SUPPORTED_TOP_LEVEL_TOOLCHAINS = OrderedDict(
             {"name": "foss", "version": "2025b"},
             {"name": "foss", "version": "2025a"},
             {"name": "foss", "version": "2024a"},
+            {"name": "rompi", "version": "2025a"},
         ],
         "2023.06": [
             {"name": "foss", "version": "2023b"},
@@ -246,21 +247,22 @@ if __name__ == "__main__":
     # We use a single architecture path to gather information about the software versions
     eessi_reference_architecture = os.getenv("EESSI_ARCHDETECT_OPTIONS_OVERRIDE", False)
     if not eessi_reference_architecture:
-        print("You must have selected a CPU architecture via EESSI_ARCHDETECT_OPTIONS_OVERRIDE environment variable")
+        print("You must have selected a single CPU architecture via EESSI_ARCHDETECT_OPTIONS_OVERRIDE environment variable")
         exit()
     base_path = f"/cvmfs/{repository}/versions/{eessi_version}/software/linux/{eessi_reference_architecture}"
-    cpu_easyconfig_files_dict = collect_eb_files(os.path.join(base_path, "software"))
-    # We also gather all the acclerator installations for NVIDIA-enabled packages
+    
+    # Now decide on whether we take a CPU or an accelerator
     # We're not typically running this script on a node with a GPU so an override must have been set
-    eessi_reference_nvidia_architecture = os.getenv("EESSI_ACCELERATOR_TARGET_OVERRIDE", False)
-    if not eessi_reference_nvidia_architecture:
-        print("You must have selected a GPU architecture via EESSI_ACCELERATOR_TARGET_OVERRIDE")
-        exit()
-    accel_base_path = os.path.join(base_path, eessi_reference_nvidia_architecture)
-    accel_easyconfig_files_dict = collect_eb_files(os.path.join(accel_base_path, "software"))
+    eessi_reference_accel_architecture = os.getenv("EESSI_ACCELERATOR_TARGET_OVERRIDE", False)
 
-    # Merge the easyconfig files
-    easyconfig_files_dict = merge_dicts(cpu_easyconfig_files_dict, accel_easyconfig_files_dict)
+    if eessi_reference_accel_architecture:
+        accel_base_path = os.path.join(base_path, eessi_reference_accel_architecture)
+        easyconfig_files_dict = collect_eb_files(os.path.join(accel_base_path, "software"))
+        output_suffix = "_".join(accel_base_path.split("/")[:2])
+    else:
+        cpu_base_path = os.path.join(base_path, "software")
+        easyconfig_files_dict = collect_eb_files(cpu_base_path)
+        output_suffix = 'cpu'
 
     set_up_configuration(args="")
     tmpdir = tempfile.mkdtemp()
@@ -390,7 +392,7 @@ if __name__ == "__main__":
 
     # Store the result
     with open(
-        f"eessi_software_{eessi_version}-eb{str(EASYBUILD_VERSION.version[0])}.yaml",
+        f"eessi_software_{eessi_version}-eb{str(EASYBUILD_VERSION.version[0])}-{output_suffix}.yaml",
         "w",
     ) as f:
         yaml.dump(eessi_software, f)
