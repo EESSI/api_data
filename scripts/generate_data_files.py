@@ -258,7 +258,7 @@ if __name__ == "__main__":
     if eessi_reference_accel_architecture:
         accel_base_path = os.path.join(base_path, eessi_reference_accel_architecture)
         easyconfig_files_dict = collect_eb_files(os.path.join(accel_base_path, "software"))
-        output_suffix = "_".join(accel_base_path.split("/")[:2])
+        output_suffix = "_".join(eessi_reference_accel_architecture.split("/")[:2])
     else:
         cpu_base_path = os.path.join(base_path, "software")
         easyconfig_files_dict = collect_eb_files(cpu_base_path)
