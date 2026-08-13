@@ -2,6 +2,9 @@ import os
 import json
 import yaml
 import hashlib
+# EB 5.4.0 brought in a change that required the import below
+import easybuild.easyblocks.python
+
 
 # Directory to scan
 directory = "./"  # Change to your target directory

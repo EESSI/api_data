@@ -25,7 +25,6 @@ jobs:
       - name: Generate API data
         run: |
           echo "Generating data files..."
-          
           # Only do 2023.06 for EB 5 since this is just a test
           (
             module --force purge
@@ -42,6 +41,8 @@ jobs:
           ) &
           # Merge all these results together
           wait
+          module reset
+          module load EESSI-extend  # Loads EasyBuild and we need that for our merge scripts
           python scripts/merge_data_files.py out.yaml eessi*.yaml
           mv out.yaml docs/data/eessi_software_metadata.yaml
 
@@ -62,6 +63,8 @@ jobs:
             echo $MODULEPATH
             python scripts/generate_data_files.py --eessi-version 2025.06-001 --repository "dev.eessi.io/riscv"
           )
+          module reset
+          module load EESSI-extend  # Loads EasyBuild and we need that for our merge scripts
           python scripts/merge_data_files.py out_riscv.yaml eessi*.yaml
           mv out_riscv.yaml docs/data/eessi_software_metadata-riscv.yaml
 
