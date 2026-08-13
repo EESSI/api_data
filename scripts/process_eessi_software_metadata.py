@@ -6,6 +6,8 @@ import sys
 import yaml
 import json
 import subprocess
+# EB 5.4.0 brought in a change that required the import below
+import easybuild.easyblocks.python
 
 ARCHITECTURES = [
     "aarch64/generic",
