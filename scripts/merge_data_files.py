@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 import sys
 import yaml
+# EB 5.4.0 brought in a change that required the import below
+import easybuild.easyblocks.python
 from datetime import datetime, timezone
 
 
