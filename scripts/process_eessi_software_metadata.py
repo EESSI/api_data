@@ -13,6 +13,7 @@ ARCHITECTURES = [
     "aarch64/neoverse_n1",
     "aarch64/neoverse_v1",
     "aarch64/nvidia/grace",
+    "aarch64/aws/graviton4",
     "x86_64/generic",
     "x86_64/amd/zen2",
     "x86_64/amd/zen3",
@@ -31,14 +32,30 @@ RISCV_ARCHITECTURES = [
 
 NVIDIA_ARCHITECTURES = [
     "accel/nvidia/cc70",
+    "accel/nvidia/cc75",
     "accel/nvidia/cc80",
     "accel/nvidia/cc90",
     "accel/nvidia/cc100",
     "accel/nvidia/cc120",
 ]
 
+ROCM_ARCHITECTURES = [
+    "accel/amd/gfx1030",
+    "accel/amd/gfx1100",
+    "accel/amd/gfx1101",
+    "accel/amd/gfx1200",
+    "accel/amd/gfx1201",
+    "accel/amd/gfx908",
+    "accel/amd/gfx90a",
+    "accel/amd/gfx942",
+]
+
 TOOLCHAIN_FAMILIES = [
+    "2026.1_lfoss",
+    "2026.1_foss",
+    "2025b_lfoss",
     "2025b_foss",
+    "2025a_rompi",
     "2025a_foss",
     "2024a_foss",
     "2023b_foss",
@@ -83,7 +100,7 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
     # needs to be a dict as we can filter on associated cpu arch
     base_version_dict["gpu_arch"] = {}
     detected_accel_arch = None
-    for accel_arch in NVIDIA_ARCHITECTURES:
+    for accel_arch in NVIDIA_ARCHITECTURES + ROCM_ARCHITECTURES:
         if f"/{accel_arch}/" in original_path:
             detected_accel_arch = accel_arch
             break
@@ -111,7 +128,11 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
             # If we have an accelerator module let's check which architectures are supported
             if detected_accel_arch:
                 base_version_dict["gpu_arch"][arch] = []
-                for accel_arch in NVIDIA_ARCHITECTURES:
+                if accel_arch in ROCM_ARCHITECTURES:
+                    accel_architectures = ROCM_ARCHITECTURES
+                else:
+                    accel_architectures = NVIDIA_ARCHITECTURES
+                for accel_arch in accel_architectures:
                     accel_substituted_modulefile = substituted_modulefile.replace(detected_accel_arch, accel_arch)
                     found = subprocess.run(["grep", "-q", accel_substituted_modulefile, substituted_spider_cache]).returncode == 0
                     if found:
