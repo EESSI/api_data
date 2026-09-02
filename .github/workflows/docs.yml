@@ -36,6 +36,31 @@ jobs:
           export EESSI_ARCHDETECT_OPTIONS_OVERRIDE="x86_64/intel/icelake"
           # Set GPU overrides for the stack to query (we have no GPU, so also override the GPU check)
           export EESSI_OVERRIDE_GPU_CHECK=1
+          
+          ## CPU only ##
+          # First do 2023.06 for EB 4
+          ( module load EESSI/2023.06 && module load EasyBuild/4 && module load EESSI-extend && python scripts/generate_data_files.py --eessi-version=2023.06 ) &
+          pid1=$!
+          # then 2023.06 for EB 5
+          ( module load EESSI/2023.06 && module load EasyBuild/5 && module load EESSI-extend && python scripts/generate_data_files.py --eessi-version=2023.06 ) &
+          pid2=$!
+          # then 2025.06 for EB 5 (does not have EB4)
+          ( module load EESSI/2025.06 && module load EasyBuild/5 && module load EESSI-extend && python scripts/generate_data_files.py --eessi-version=2025.06 ) &
+          pid3=$!
+          # then 2026.06 for EB 5 (does not have EB4)
+          ( module load EESSI/2026.06 && module load EasyBuild/5 && module load EESSI-extend && python scripts/generate_data_files.py --eessi-version=2026.06 ) &
+          pid4=$!
+          fail=0  # initialise
+          wait $pid1 || fail=1
+          wait $pid2 || fail=2
+          wait $pid3 || fail=3
+          wait $pid4 || fail=4
+          if [ $fail -ne 0 ]; then
+            echo "One or more jobs failed for CPU only (at least job $fail)"
+            exit 1
+          fi
+
+          ## NVIDIA GPU ##
           # First do 2023.06 for EB 4
           export EESSI_ACCELERATOR_TARGET_OVERRIDE="accel/nvidia/cc80"  # Stick to 8.0 for EB4 as options for 9.0 set by EESSI-extend are not understood there
           ( module load EESSI/2023.06 && module load EasyBuild/4 && module load EESSI-extend && python scripts/generate_data_files.py --eessi-version=2023.06 ) &
@@ -48,14 +73,37 @@ jobs:
           export EESSI_ACCELERATOR_TARGET_OVERRIDE="accel/nvidia/cc90"
           ( module load EESSI/2025.06 && module load EasyBuild/5 && module load EESSI-extend && python scripts/generate_data_files.py --eessi-version=2025.06 ) &
           pid3=$!
+          # then 2026.06 for EB 5 (does not have EB4)
+          export EESSI_ACCELERATOR_TARGET_OVERRIDE="accel/nvidia/cc90"
+          ( module load EESSI/2026.06 && module load EasyBuild/5 && module load EESSI-extend && python scripts/generate_data_files.py --eessi-version=2026.06 ) &
+          pid4=$!
           fail=0  # initialise
           wait $pid1 || fail=1
           wait $pid2 || fail=2
           wait $pid3 || fail=3
+          wait $pid4 || fail=4
+          if [ $fail -ne 0 ]; then
+            echo "One or more jobs failed for NVIDIA GPU (at least job $fail)"
+            exit 1
+          fi          
+
+          ## AMD GPU (2025.06+) ##
+          # 2025.06 for EB 5 (does not have EB4)
+          export EESSI_ACCELERATOR_TARGET_OVERRIDE="accel/amd/gfx1200"
+          ( module load EESSI/2025.06 && module load EasyBuild/5 && module load EESSI-extend && python scripts/generate_data_files.py --eessi-version=2025.06 ) &
+          pid1=$!
+          # then 2026.06 for EB 5 (does not have EB4)
+          export EESSI_ACCELERATOR_TARGET_OVERRIDE="accel/amd/gfx1200"
+          ( module load EESSI/2026.06 && module load EasyBuild/5 && module load EESSI-extend && python scripts/generate_data_files.py --eessi-version=2026.06 ) &
+          pid2=$!
+          fail=0  # initialise
+          wait $pid1 || fail=1
+          wait $pid2 || fail=2
           if [ $fail -ne 0 ]; then
             echo "One or more jobs failed (at least job $fail)"
             exit 1
           fi
+          
           # Merge all these results together
           module reset
           module load EESSI-extend  # Loads EasyBuild and we need that for our merge scripts
@@ -71,7 +119,6 @@ jobs:
             export EESSI_VERSION_OVERRIDE="2025.06-001"
             export EESSI_ARCHDETECT_OPTIONS_OVERRIDE="riscv64/generic"
             export EESSI_SOFTWARE_SUBDIR_OVERRIDE="riscv64/generic"
-            export EESSI_ACCELERATOR_TARGET_OVERRIDE="does/not/exist"
             export EESSI_CPU_FAMILY_OVERRIDE="x86_64"
             module load EESSI/2025.06
             module load EasyBuild/5

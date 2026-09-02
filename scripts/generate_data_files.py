@@ -19,7 +19,7 @@ from easybuild.tools.include import include_easyblocks
 from contextlib import contextmanager
 
 SUPPORTED_REPOSITORIES = {
-        'software.eessi.io': ["2025.06", "2023.06"],
+        'software.eessi.io': ["2026.06", "2025.06", "2023.06"],
         'dev.eessi.io/riscv': ["2025.06-001"],
 }
 
@@ -32,7 +32,13 @@ VALID_EESSI_VERSIONS = [
 # Give order to my toolchains so I can easily figure out what "latest" means
 EESSI_SUPPORTED_TOP_LEVEL_TOOLCHAINS = OrderedDict(
     {
+        "2026.06": [
+            {"name": "lfoss", "version": "2026.1"},
+            {"name": "foss", "version": "2026.1"},
+        ],
         "2025.06": [
+            {"name": "rompi", "version": "2025a"},
+            {"name": "lfoss", "version": "2025b"},
             {"name": "foss", "version": "2025b"},
             {"name": "foss", "version": "2025a"},
             {"name": "foss", "version": "2024a"},
@@ -174,6 +180,9 @@ def collect_eb_files(base_path):
     # Find all .eb files recursively
     eb_files = glob.glob(os.path.join(base_path, "*/*/easybuild/*.eb"))
 
+    if not eb_files:
+        raise FileNotFoundError(f"No .eb files found under {base_path}, that's probably an error")
+
     for eb_file in eb_files:
         folder = os.path.dirname(eb_file)
 
@@ -249,18 +258,19 @@ if __name__ == "__main__":
         print("You must have selected a CPU architecture via EESSI_ARCHDETECT_OPTIONS_OVERRIDE environment variable")
         exit()
     base_path = f"/cvmfs/{repository}/versions/{eessi_version}/software/linux/{eessi_reference_architecture}"
-    cpu_easyconfig_files_dict = collect_eb_files(os.path.join(base_path, "software"))
-    # We also gather all the acclerator installations for NVIDIA-enabled packages
-    # We're not typically running this script on a node with a GPU so an override must have been set
-    eessi_reference_nvidia_architecture = os.getenv("EESSI_ACCELERATOR_TARGET_OVERRIDE", False)
-    if not eessi_reference_nvidia_architecture:
-        print("You must have selected a GPU architecture via EESSI_ACCELERATOR_TARGET_OVERRIDE")
-        exit()
-    accel_base_path = os.path.join(base_path, eessi_reference_nvidia_architecture)
-    accel_easyconfig_files_dict = collect_eb_files(os.path.join(accel_base_path, "software"))
 
-    # Merge the easyconfig files
-    easyconfig_files_dict = merge_dicts(cpu_easyconfig_files_dict, accel_easyconfig_files_dict)
+    # If the accelerator override is set, we want to gather all the acclerator installations for accelerator-enabled
+    # packages. We're not typically running this script on a node with a GPU so an override must have been set.
+    eessi_reference_accel_architecture = os.getenv("EESSI_ACCELERATOR_TARGET_OVERRIDE", False)
+    if eessi_reference_accel_architecture:
+        accel_base_path = os.path.join(base_path, eessi_reference_accel_architecture)
+        print(f"Searching for all accelerator easyconfigs under {accel_base_path}")
+        output_stub = '-' + eessi_reference_accel_architecture.replace('/', '_')
+        easyconfig_files_dict = collect_eb_files(os.path.join(accel_base_path, "software"))
+    else:
+        print(f"Searching for all easyconfigs under {base_path}")
+        easyconfig_files_dict = collect_eb_files(os.path.join(base_path, "software"))
+        output_stub = ''
 
     set_up_configuration(args="")
     tmpdir = tempfile.mkdtemp()
@@ -390,7 +400,7 @@ if __name__ == "__main__":
 
     # Store the result
     with open(
-        f"eessi_software_{eessi_version}-eb{str(EASYBUILD_VERSION.version[0])}.yaml",
+        f"eessi_software_{eessi_version}-eb{str(EASYBUILD_VERSION.version[0])}{output_stub}.yaml",
         "w",
     ) as f:
         yaml.dump(eessi_software, f)
