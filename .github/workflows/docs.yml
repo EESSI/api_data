@@ -105,10 +105,13 @@ jobs:
           fi
           
           # Merge all these results together
+          module reset
+          module load EESSI-extend  # Loads EasyBuild and we need that for our merge scripts
           python scripts/merge_data_files.py out.yaml eessi*.yaml
           mv out.yaml docs/data/eessi_software_metadata.yaml
 
           # Also do RISC-V repository
+          module --force purge
           rm eessi*.yaml
           # Need to set environment variables to load EESSI module for RISC-V
           (
@@ -123,6 +126,9 @@ jobs:
             echo $MODULEPATH
             python scripts/generate_data_files.py --eessi-version 2025.06-001 --repository "dev.eessi.io/riscv"
           )
+          # Merge all these results together
+          module reset
+          module load EESSI-extend  # Loads EasyBuild and we need that for our merge scripts
           python scripts/merge_data_files.py out_riscv.yaml eessi*.yaml
           mv out_riscv.yaml docs/data/eessi_software_metadata-riscv.yaml
 
