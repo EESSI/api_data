@@ -105,6 +105,7 @@ jobs:
           fi
           
           # Merge all these results together
+          unset EESSI_ACCELERATOR_TARGET_OVERRIDE
           module reset
           module load EESSI-extend  # Loads EasyBuild and we need that for our merge scripts
           python scripts/merge_data_files.py out.yaml eessi*.yaml
