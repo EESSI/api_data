@@ -68,6 +68,7 @@ jobs:
           ) &
           pid3=$!
           # Merge all these results together
+          fail=0
           wait $pid1 || fail=1
           wait $pid2 || fail=2
           wait $pid3 || fail=3
@@ -89,7 +90,6 @@ jobs:
             export EESSI_VERSION_OVERRIDE="2025.06-001"
             export EESSI_ARCHDETECT_OPTIONS_OVERRIDE="riscv64/generic"
             export EESSI_SOFTWARE_SUBDIR_OVERRIDE="riscv64/generic"
-            export EESSI_ACCELERATOR_TARGET_OVERRIDE="does/not/exist"
             export EESSI_CPU_FAMILY_OVERRIDE="x86_64"
             module load EESSI/2025.06
             module load EasyBuild/5
