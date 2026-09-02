@@ -261,9 +261,11 @@ if __name__ == "__main__":
     eessi_reference_accel_architecture = os.getenv("EESSI_ACCELERATOR_TARGET_OVERRIDE", False)
     if eessi_reference_accel_architecture:
         accel_base_path = os.path.join(base_path, eessi_reference_accel_architecture)
+        print(f"Searching for all accelerator easyconfigs under {accel_base_path}")
         output_stub = '-' + eessi_reference_accel_architecture.replace('/', '_')
         easyconfig_files_dict = collect_eb_files(os.path.join(accel_base_path, "software"))
     else:
+        print(f"Searching for all easyconfigs under {base_path}")
         easyconfig_files_dict = collect_eb_files(os.path.join(base_path, "software"))
         output_stub = ''
 
