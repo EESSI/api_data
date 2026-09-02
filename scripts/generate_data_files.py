@@ -180,6 +180,9 @@ def collect_eb_files(base_path):
     # Find all .eb files recursively
     eb_files = glob.glob(os.path.join(base_path, "*/*/easybuild/*.eb"))
 
+    if not eb_files:
+        raise FileNotFoundError(f"No .eb files found under {base_path}, that's probably an error")
+
     for eb_file in eb_files:
         folder = os.path.dirname(eb_file)
 
