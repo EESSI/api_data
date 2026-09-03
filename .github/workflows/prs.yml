@@ -52,7 +52,7 @@ jobs:
             python scripts/generate_data_files.py --eessi-version=2025.06
           ) &
           pid2=$!
-          # then 2025.06 for EB 5 with NVIDIA accelerators (does not have EB4)
+          # then 2026.06 for EB 5 with NVIDIA accelerators (does not have EB4)
           (
             module --force purge
             export EESSI_DEBUG_INIT=1
@@ -61,10 +61,10 @@ jobs:
             # Set GPU overrides for the stack to query (we have no GPU, so also override the GPU check)
             export EESSI_ACCELERATOR_TARGET_OVERRIDE="accel/nvidia/cc80"
             export EESSI_OVERRIDE_GPU_CHECK=1
-            module load EESSI/2025.06
+            module load EESSI/2026.06
             module load EasyBuild/5
             module load EESSI-extend
-            python scripts/generate_data_files.py --eessi-version=2025.06
+            python scripts/generate_data_files.py --eessi-version=2026.06
           ) &
           pid3=$!
           # Merge all these results together
