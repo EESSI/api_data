@@ -26,6 +26,7 @@ ARCHITECTURES = [
     "x86_64/intel/sapphirerapids",
     "x86_64/intel/icelake",
     "x86_64/intel/cascadelake",
+    "x86_64/intel/graniterapids",
 ]
 
 RISCV_ARCHITECTURES = [
