@@ -244,7 +244,7 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
     # - Finally components (may not exist in data)
     components = {}
     if "components" in file_metadata.keys():
-        for component in file_metadata["components"]:
+        for component in file_metadata["components"] or []:
             # First add it to our list of extensions for the parent software
             version_dict["extensions"].append({"type": "component", "name": component[0], "version": component[1]})
 
