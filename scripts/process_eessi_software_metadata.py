@@ -9,6 +9,8 @@ import subprocess
 # EB 5.4.0 brought in a change that required the import below
 import easybuild.easyblocks.python
 
+# I'm hardcoding this but you can easily figure it out from
+# ls /cvmfs/software.eessi.io/versions/*/software/linux/*/*/.lmod/cache/spiderT.lua /cvmfs/software.eessi.io/versions/*/software/linux/*/*/*/.lmod/cache/spiderT.lua
 ARCHITECTURES = [
     "aarch64/generic",
     "aarch64/a64fx",
@@ -32,6 +34,26 @@ ARCHITECTURES = [
 RISCV_ARCHITECTURES = [
     "riscv64/generic",
 ]
+
+# Missing architecture -> architecture key to use as a fallback.
+# (to verify these check https://github.com/EESSI/software-layer-scripts/tree/main/tests/archdetect)
+CPU_ARCHITECTURE_OVERRIDES = {
+    "2023.06": {
+        # aarch64
+        "aarch64/aws/graviton4": "aarch64/neoverse_v1",
+        # x86_64
+        "x86_64/amd/zen5": "x86_64/amd/zen4",
+        "x86_64/intel/graniterapids": "x86_64/intel/sapphirerapids",
+        # RISC-V
+        "riscv64/generic": "",
+    },
+    "2025.06": {
+        "aarch64/aws/graviton4": "aarch64/neoverse_v1",
+        "riscv64/generic": "",
+        "x86_64/intel/graniterapids": "x86_64/intel/sapphirerapids",
+    },
+    "2026.06": {},
+}
 
 NVIDIA_ARCHITECTURES = [
     "accel/nvidia/cc70",
@@ -113,48 +135,53 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
 
     # 2) Construct the modulefile path
     before_arch, _, _ = original_path.partition(detected_arch)
+    path_eessi_version = original_path.split("/versions/")[1].split("/")[0]
     # Remember, detected_accel_arch can be an empty string
     modulefile = os.path.join(before_arch, detected_arch, detected_accel_arch, "modules/all", file_metadata["module"]["full_module_name"] + ".lua")
     spider_cache = before_arch + detected_arch + "/.lmod/cache/spiderT.lua"
 
     # 3) Substitute each architecture and test module file existence in spider cache
     for arch in architecture_group:
-        substituted_modulefile = modulefile.replace(detected_arch, arch)
-        substituted_spider_cache = spider_cache.replace(detected_arch, arch)
-        # os.path.exists is very expensive for CVMFS so we just look for the file in the spider cache (if we can)
-        if os.path.exists(substituted_spider_cache):
-            found = subprocess.run(["grep", "-q", substituted_modulefile, substituted_spider_cache]).returncode == 0
-        else:
-            found = os.path.exists(substituted_modulefile)
-        if found:
-            base_version_dict["cpu_arch"].append(arch)
-            # If we have an accelerator module let's check which architectures are supported
-            if detected_accel_arch:
-                base_version_dict["gpu_arch"][arch] = []
-                if accel_arch in ROCM_ARCHITECTURES:
-                    accel_architectures = ROCM_ARCHITECTURES
-                else:
-                    accel_architectures = NVIDIA_ARCHITECTURES
-                for accel_arch in accel_architectures:
-                    accel_substituted_modulefile = substituted_modulefile.replace(detected_accel_arch, accel_arch)
-                    found = subprocess.run(["grep", "-q", accel_substituted_modulefile, substituted_spider_cache]).returncode == 0
-                    if found:
-                        # Let's not include the "accel/" part of the accel_arch 
-                        base_version_dict["gpu_arch"][arch].append(accel_arch.replace("accel/", "", 1))
+        # skip checking if the arch is not explicitly supported
+        # (this will run the check if path_eessi_version is not in
+        # CPU_ARCHITECTURE_OVERRIDES, which is what we want for dev.eessi.io versions)
+        if arch not in CPU_ARCHITECTURE_OVERRIDES.get(path_eessi_version, {}):
+            substituted_modulefile = modulefile.replace(detected_arch, arch)
+            substituted_spider_cache = spider_cache.replace(detected_arch, arch)
+            # os.path.exists is very expensive for CVMFS so we just look for the file in the spider cache (if we can)
+            if os.path.exists(substituted_spider_cache):
+                found = subprocess.run(["grep", "-q", substituted_modulefile, substituted_spider_cache]).returncode == 0
+            else:
+                found = os.path.exists(substituted_modulefile)
+            if found:
+                base_version_dict["cpu_arch"].append(arch)
+                # If we have an accelerator module let's check which architectures are supported
+                if detected_accel_arch:
+                    base_version_dict["gpu_arch"][arch] = []
+                    if accel_arch in ROCM_ARCHITECTURES:
+                        accel_architectures = ROCM_ARCHITECTURES
                     else:
-                        # Let's not be too noisy here, we know we don't have some CUDA archs in 2023.06
-                        if not (
-                            accel_substituted_modulefile.startswith('/cvmfs/software.eessi.io/versions/2023.06')
-                            and accel_arch in ["accel/nvidia/cc100", "accel/nvidia/cc120"]
-                        ):
-                            print(
-                                f"No module {accel_substituted_modulefile}... "
-                                f"not adding software for architecture {arch}/{accel_arch}"
-                            )
-                        continue
-        else:
-            print(f"No module {substituted_modulefile}...not adding software for architecture {arch}")
-            continue
+                        accel_architectures = NVIDIA_ARCHITECTURES
+                    for accel_arch in accel_architectures:
+                        accel_substituted_modulefile = substituted_modulefile.replace(detected_accel_arch, accel_arch)
+                        found = subprocess.run(["grep", "-q", accel_substituted_modulefile, substituted_spider_cache]).returncode == 0
+                        if found:
+                            # Let's not include the "accel/" part of the accel_arch 
+                            base_version_dict["gpu_arch"][arch].append(accel_arch.replace("accel/", "", 1))
+                        else:
+                            # Let's not be too noisy here, we know we don't have some CUDA archs in 2023.06
+                            if not (
+                                accel_substituted_modulefile.startswith('/cvmfs/software.eessi.io/versions/2023.06')
+                                and accel_arch in ["accel/nvidia/cc100", "accel/nvidia/cc120"]
+                            ):
+                                print(
+                                    f"No module {accel_substituted_modulefile}... "
+                                    f"not adding software for architecture {arch}/{accel_arch}"
+                                )
+                            continue
+            else:
+                print(f"No module {substituted_modulefile}...not adding software for architecture {arch}")
+                continue
 
     # Now we can cycle throught the possibilities
     # - software application itself
@@ -411,9 +438,20 @@ def main():
     eessi_versions = software_metadata["eessi_version"].keys()
     base_json_metadata["architectures_map"] = {}
     for eessi_version in eessi_versions:
-        base_json_metadata["architectures_map"][eessi_version] = {}
+        # Some unusual EESSI versions (2025.06-001) for the dev.eessi.io RISC-V stuff, let's ignore those
+        is_dev_version = "-00" in eessi_version
+
+        if eessi_version in CPU_ARCHITECTURE_OVERRIDES:
+            base_json_metadata["architectures_map"][eessi_version] = CPU_ARCHITECTURE_OVERRIDES[eessi_version]
+        elif is_dev_version:
+            print(f"Not sanity checking EESSI version {eessi_version}, as it looks like a dev.eessi.io version")
+            base_json_metadata["architectures_map"][eessi_version] = {}
+        else:
+            raise ValueError(f"EESSI version {eessi_version} not present in known overrides {CPU_ARCHITECTURE_OVERRIDES}")
         for architecture in ARCHITECTURES + RISCV_ARCHITECTURES:
-            base_json_metadata["architectures_map"][eessi_version][architecture] = architecture
+            # If an override exists, we prefer it
+            if architecture not in base_json_metadata["architectures_map"][eessi_version]:
+                base_json_metadata["architectures_map"][eessi_version][architecture] = architecture
     base_json_metadata["gpu_architectures_map"] = {}
     base_json_metadata["category_details"] = {}
     full_software_information = get_all_software(software_metadata["eessi_version"])
