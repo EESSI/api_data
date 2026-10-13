@@ -143,7 +143,9 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
     # 3) Substitute each architecture and test module file existence in spider cache
     for arch in architecture_group:
         # skip checking if the arch is not explicitly supported
-        if arch not in CPU_ARCHITECTURE_OVERRIDES[path_eessi_version]:
+        # (this will run the check if path_eessi_version is not in
+        # CPU_ARCHITECTURE_OVERRIDES, which is what we want for dev.eessi.io versions)
+        if arch not in CPU_ARCHITECTURE_OVERRIDES.get(path_eessi_version, {}):
             substituted_modulefile = modulefile.replace(detected_arch, arch)
             substituted_spider_cache = spider_cache.replace(detected_arch, arch)
             # os.path.exists is very expensive for CVMFS so we just look for the file in the spider cache (if we can)
