@@ -438,6 +438,9 @@ def main():
     for eessi_version in eessi_versions:
         if eessi_version in CPU_ARCHITECTURE_OVERRIDES:
             base_json_metadata["architectures_map"][eessi_version] = CPU_ARCHITECTURE_OVERRIDES[eessi_version]
+        # Some unusual EESSI versions (2025.06-001) for the dev.eessi.io RISC-V stuff, let's ignore that
+        elif '-00' in eessi_version:
+            print(f"Not sanity checking EESSI version {eessi_version}, as it looks a dev.eessi.io version")
         else:
             raise ValueError(f"EESSI version {eessi_version} not present in known overrides f{CPU_ARCHITECTURE_OVERRIDES}")
         for architecture in ARCHITECTURES + RISCV_ARCHITECTURES:
