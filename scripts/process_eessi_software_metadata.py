@@ -142,46 +142,42 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
 
     # 3) Substitute each architecture and test module file existence in spider cache
     for arch in architecture_group:
-        # skip checking if the arch is not explicitly supported
-        # (this will run the check if path_eessi_version is not in
-        # CPU_ARCHITECTURE_OVERRIDES, which is what we want for dev.eessi.io versions)
-        if arch not in CPU_ARCHITECTURE_OVERRIDES.get(path_eessi_version, {}):
-            substituted_modulefile = modulefile.replace(detected_arch, arch)
-            substituted_spider_cache = spider_cache.replace(detected_arch, arch)
-            # os.path.exists is very expensive for CVMFS so we just look for the file in the spider cache (if we can)
-            if os.path.exists(substituted_spider_cache):
-                found = subprocess.run(["grep", "-q", substituted_modulefile, substituted_spider_cache]).returncode == 0
-            else:
-                found = os.path.exists(substituted_modulefile)
-            if found:
-                base_version_dict["cpu_arch"].append(arch)
-                # If we have an accelerator module let's check which architectures are supported
-                if detected_accel_arch:
-                    base_version_dict["gpu_arch"][arch] = []
-                    if accel_arch in ROCM_ARCHITECTURES:
-                        accel_architectures = ROCM_ARCHITECTURES
+        substituted_modulefile = modulefile.replace(detected_arch, arch)
+        substituted_spider_cache = spider_cache.replace(detected_arch, arch)
+        # os.path.exists is very expensive for CVMFS so we just look for the file in the spider cache (if we can)
+        if os.path.exists(substituted_spider_cache):
+            found = subprocess.run(["grep", "-q", substituted_modulefile, substituted_spider_cache]).returncode == 0
+        else:
+            found = os.path.exists(substituted_modulefile)
+        if found:
+            base_version_dict["cpu_arch"].append(arch)
+            # If we have an accelerator module let's check which architectures are supported
+            if detected_accel_arch:
+                base_version_dict["gpu_arch"][arch] = []
+                if detected_accel_arch in ROCM_ARCHITECTURES:
+                    accel_architectures = ROCM_ARCHITECTURES
+                else:
+                    accel_architectures = NVIDIA_ARCHITECTURES
+                for accel_arch in accel_architectures:
+                    accel_substituted_modulefile = substituted_modulefile.replace(detected_accel_arch, accel_arch)
+                    found = subprocess.run(["grep", "-q", accel_substituted_modulefile, substituted_spider_cache]).returncode == 0
+                    if found:
+                        # Let's not include the "accel/" part of the accel_arch
+                        base_version_dict["gpu_arch"][arch].append(accel_arch.replace("accel/", "", 1))
                     else:
-                        accel_architectures = NVIDIA_ARCHITECTURES
-                    for accel_arch in accel_architectures:
-                        accel_substituted_modulefile = substituted_modulefile.replace(detected_accel_arch, accel_arch)
-                        found = subprocess.run(["grep", "-q", accel_substituted_modulefile, substituted_spider_cache]).returncode == 0
-                        if found:
-                            # Let's not include the "accel/" part of the accel_arch 
-                            base_version_dict["gpu_arch"][arch].append(accel_arch.replace("accel/", "", 1))
-                        else:
-                            # Let's not be too noisy here, we know we don't have some CUDA archs in 2023.06
-                            if not (
-                                accel_substituted_modulefile.startswith('/cvmfs/software.eessi.io/versions/2023.06')
-                                and accel_arch in ["accel/nvidia/cc100", "accel/nvidia/cc120"]
-                            ):
-                                print(
-                                    f"No module {accel_substituted_modulefile}... "
-                                    f"not adding software for architecture {arch}/{accel_arch}"
-                                )
-                            continue
-            else:
-                print(f"No module {substituted_modulefile}...not adding software for architecture {arch}")
-                continue
+                        # Let's not be too noisy here, we know we don't have some CUDA archs in 2023.06
+                        if not (
+                            accel_substituted_modulefile.startswith('/cvmfs/software.eessi.io/versions/2023.06')
+                            and accel_arch in ["accel/nvidia/cc100", "accel/nvidia/cc120"]
+                        ):
+                            print(
+                                f"No module {accel_substituted_modulefile}... "
+                                f"not adding software for architecture {arch}/{accel_arch}"
+                            )
+                        continue
+        else:
+            print(f"No module {substituted_modulefile}...not adding software for architecture {arch}")
+            continue
 
     # Now we can cycle throught the possibilities
     # - software application itself
