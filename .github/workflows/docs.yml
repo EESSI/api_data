@@ -150,7 +150,7 @@ jobs:
       - run: |
           source /tmp/venv_docs/bin/activate
           zensical build --clean
-      - uses: actions/upload-pages-artifact@v4
+      - uses: actions/upload-pages-artifact@v7
         with:
           path: site
-      - uses: actions/deploy-pages@v4
+      - uses: actions/deploy-pages@v5
