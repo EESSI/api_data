@@ -10,9 +10,9 @@ permissions:
   contents: read
 jobs:
   test_data_generation:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
-      - uses: actions/checkout@v5
+      - uses: actions/checkout@v7
       - uses: eessi/github-action-eessi@v3
         with:
           use_eessi_module: true
@@ -121,7 +121,7 @@ jobs:
           source /tmp/venv_docs/bin/activate
           zensical build --clean
       - name: Upload EESSI API metadata
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: eessi-api-metadata
           path: docs/data/eessi_api_metadata*software*.json
