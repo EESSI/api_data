@@ -157,7 +157,8 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
             if found:
                 base_version_dict["cpu_arch"].append(arch)
                 # If we have an accelerator module let's check which architectures are supported
-                if detected_accel_arch:
+                # (no accelerators for a64fx)
+                if detected_accel_arch and arch != 'aarch64/a64fx':
                     base_version_dict["gpu_arch"][arch] = []
                     if detected_accel_arch in ROCM_ARCHITECTURES:
                         accel_architectures = ROCM_ARCHITECTURES
@@ -170,10 +171,12 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
                             # Let's not include the "accel/" part of the accel_arch
                             base_version_dict["gpu_arch"][arch].append(accel_arch.replace("accel/", "", 1))
                         else:
-                            # Let's not be too noisy here, we know we don't have some CUDA archs in 2023.06
+                            # Let's not be too noisy here, we know we don't have some CUDA archs in 2023.06/2025.06
                             if not (
-                                accel_substituted_modulefile.startswith('/cvmfs/software.eessi.io/versions/2023.06')
-                                and accel_arch in ["accel/nvidia/cc100", "accel/nvidia/cc120"]
+                                # Condition A: Original 2023.06 constraints
+                                (path_eessi_version in ('2023.06') and accel_arch in ["accel/nvidia/cc100", "accel/nvidia/cc120"])                               
+                                # Condition B: No cc75 in 2023.06 or 2025.06
+                                or (path_eessi_version in ('2023.06', '2025.06') and accel_arch == "accel/nvidia/cc75")
                             ):
                                 print(
                                     f"No module {accel_substituted_modulefile}... "
@@ -181,7 +184,8 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
                                 )
                             continue
             else:
-                print(f"No module {substituted_modulefile}...not adding software for architecture {arch}")
+                if detected_accel_arch and arch != 'aarch64/a64fx':
+                    print(f"No module {substituted_modulefile}...not adding software for architecture {arch}")
                 continue
 
     # There should be _at least_ one CPU architecture (the original one) or there is a major problem
