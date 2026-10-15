@@ -179,12 +179,12 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
                                 or (path_eessi_version in ('2023.06', '2025.06') and accel_arch == "accel/nvidia/cc75")
                             ):
                                 print(
-                                    f"No module {accel_substituted_modulefile}... "
+                                    f"No accelerator module {accel_substituted_modulefile}... "
                                     f"not adding software for architecture {arch}/{accel_arch}"
                                 )
                             continue
             else:
-                if detected_accel_arch and arch != 'aarch64/a64fx':
+                if not (detected_accel_arch and arch == 'aarch64/a64fx'):
                     print(f"No module {substituted_modulefile}...not adding software for architecture {arch}")
                 continue
 
