@@ -210,6 +210,7 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
     r_extensions = {}
     octave_extensions = {}
     ruby_extensions = {}
+    julia_extensions = {}
     for ext in file_metadata["exts_list"]:
         ext_version_dict = copy.deepcopy(base_version_dict)
         # (extensions are tuples beginning with name and version)
@@ -273,6 +274,16 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
             ruby_extensions[ext[0]] = {"versions": [], "parent_software": set()}
             ruby_extensions[ext[0]]["versions"].append(ext_version_dict)
             ruby_extensions[ext[0]]["parent_software"].add(ext_version_dict["parent_software"]["name"])
+        elif "juliapackage.py" in file_metadata["easyblocks"]:
+            # First add it to our list of extensions for the parent software
+            version_dict["extensions"].append({"type": "julia", "name": ext[0], "version": ext[1]})
+
+            ext_version_dict["description"] = (
+                f"""{ext[0]} is a Julia package included in the software module for {ext_version_dict['parent_software']['name']}"""
+            )
+            julia_extensions[ext[0]] = {"versions": [], "parent_software": set()}
+            julia_extensions[ext[0]]["versions"].append(ext_version_dict)
+            julia_extensions[ext[0]]["parent_software"].add(ext_version_dict["parent_software"]["name"])
         else:
             raise ValueError(
                 f"Only known extension types are R, Python and Perl! Easyblocks used by {original_path} were {file_metadata['easyblocks']}"
@@ -311,6 +322,7 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
         "r": r_extensions,
         "octave": octave_extensions,
         "ruby": ruby_extensions,
+        "julia":julia_extensions,
         "component": components,
     }
 
@@ -376,6 +388,7 @@ def get_all_software(eessi_files_by_eessi_version):
         "r": "R packages",
         "component": "software components",
         "octave": "octave package",
+        "julia": "Julia package"
     }
     for key in all_extension_information.keys():
         print(f"Total of {len(all_extension_information[key].keys())} individual {key} packages")
