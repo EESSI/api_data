@@ -5,6 +5,7 @@ on:
       - main
   schedule:
     - cron: "0 0 * * *"  # runs once every 24 hours at 00:00 UTC
+  workflow_dispatch:
 permissions:
   contents: read
   pages: write
