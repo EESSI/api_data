@@ -11,14 +11,12 @@ permissions:
   pages: write
   id-token: write
 jobs:
-  deploy:
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
+  build:
     runs-on: ubuntu-26.04
     steps:
       - uses: actions/configure-pages@v6
       - uses: actions/checkout@v7
+
       - uses: eessi/github-action-eessi@v3
         with:
           use_eessi_module: true
@@ -154,4 +152,13 @@ jobs:
       - uses: actions/upload-pages-artifact@v5
         with:
           path: site
-      - uses: actions/deploy-pages@v5
+  deploy:
+    needs: build
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-26.04
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v5
