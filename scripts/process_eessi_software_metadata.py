@@ -29,9 +29,15 @@ ARCHITECTURES = [
     "x86_64/intel/icelake",
     "x86_64/intel/cascadelake",
     "x86_64/intel/graniterapids",
+    "riscv64/generic",
 ]
 
 RISCV_ARCHITECTURES = [
+    "riscv64/generic",
+]
+
+NO_GPU_SOFTWARE_ARCHS = [
+    "aarch64/a64fx",
     "riscv64/generic",
 ]
 
@@ -111,6 +117,8 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
     base_version_dict["cpu_arch"] = []
     detected_arch = None
     if '/riscv64/' in original_path:
+        # The data files are generated in GitHub runners so will only have riscv64 in the path when explicitly
+        # asked to gather data from the RISCV dev.eessi.io repo so stick to RISCV archs in that case
         architecture_group = RISCV_ARCHITECTURES
     else:
         architecture_group = ARCHITECTURES
@@ -158,7 +166,7 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
                 base_version_dict["cpu_arch"].append(arch)
                 # If we have an accelerator module let's check which architectures are supported
                 # (no accelerators for a64fx)
-                if detected_accel_arch and arch != 'aarch64/a64fx':
+                if detected_accel_arch and arch not in NO_GPU_SOFTWARE_ARCHS:
                     base_version_dict["gpu_arch"][arch] = []
                     if detected_accel_arch in ROCM_ARCHITECTURES:
                         accel_architectures = ROCM_ARCHITECTURES
@@ -462,16 +470,17 @@ def main():
     for eessi_version in eessi_versions:
         # Some unusual EESSI versions (2025.06-001) for the dev.eessi.io RISC-V stuff, let's ignore those
         is_dev_version = "-00" in eessi_version
-
+        architecture_group = ARCHITECTURES
         if eessi_version in CPU_ARCHITECTURE_OVERRIDES:
             # CPU_ARCHITECTURE_OVERRIDES is a nested dict so we need a deepcopy
             base_json_metadata["architectures_map"][eessi_version] = copy.deepcopy(CPU_ARCHITECTURE_OVERRIDES[eessi_version])
         elif is_dev_version:
             print(f"Not sanity checking EESSI version {eessi_version}, as it looks like a dev.eessi.io version")
             base_json_metadata["architectures_map"][eessi_version] = {}
+            architecture_group = RISCV_ARCHITECTURES
         else:
             raise ValueError(f"EESSI version {eessi_version} not present in known overrides {CPU_ARCHITECTURE_OVERRIDES}")
-        for architecture in ARCHITECTURES + RISCV_ARCHITECTURES:
+        for architecture in architecture_group:
             # If an override exists, we prefer it
             if architecture not in base_json_metadata["architectures_map"][eessi_version]:
                 base_json_metadata["architectures_map"][eessi_version][architecture] = architecture
