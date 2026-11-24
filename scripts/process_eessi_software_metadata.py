@@ -36,6 +36,11 @@ RISCV_ARCHITECTURES = [
     "riscv64/generic",
 ]
 
+NO_GPU_SOFTWARE_ARCHS = [
+    "aarch64/a64fx",
+    "riscv64/generic",
+]
+
 # Missing architecture -> architecture key to use as a fallback.
 # (to verify these check https://github.com/EESSI/software-layer-scripts/tree/main/tests/archdetect)
 CPU_ARCHITECTURE_OVERRIDES = {
@@ -161,7 +166,7 @@ def get_software_information_by_filename(file_metadata, original_path=None, tool
                 base_version_dict["cpu_arch"].append(arch)
                 # If we have an accelerator module let's check which architectures are supported
                 # (no accelerators for a64fx)
-                if detected_accel_arch and arch != 'aarch64/a64fx':
+                if detected_accel_arch and arch not in NO_GPU_SOFTWARE_ARCHS:
                     base_version_dict["gpu_arch"][arch] = []
                     if detected_accel_arch in ROCM_ARCHITECTURES:
                         accel_architectures = ROCM_ARCHITECTURES
